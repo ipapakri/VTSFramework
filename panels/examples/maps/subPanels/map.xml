@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<panel version="14">
+ <properties>
+  <prop name="Name">
+   <prop name="el_GR.utf8">mapMainPanel</prop>
+   <prop name="en_US.utf8">mapMainPenel</prop>
+   <prop name="de_AT.utf8"></prop>
+   <prop name="ru_RU.utf8"></prop>
+  </prop>
+  <prop name="Size">1183 696</prop>
+  <prop name="BackColor">white</prop>
+  <prop name="RefPoint">-2.842170943040401e-14 0</prop>
+  <prop name="InitAndTermRef">True</prop>
+  <prop name="SendClick">False</prop>
+  <prop name="RefFileName"></prop>
+  <prop name="DPI">96</prop>
+  <prop name="PDPI">96</prop>
+  <prop name="layoutType">VBox</prop>
+  <prop name="layoutLeftMargin">1</prop>
+  <prop name="layoutRightMargin">1</prop>
+  <prop name="layoutTopMargin">1</prop>
+  <prop name="layoutBottomMargin">0</prop>
+  <prop name="layoutSpacing">0</prop>
+ </properties>
+ <events>
+  <script name="ScopeLib" isEscaped="1"><![CDATA[#uses &quot;classes/Map/MapNavigator.ctl&quot;
+#uses &quot;classes/Map/MapObject.ctl&quot;
+
+MapNavigator mapNavigator;
+
+void initialize()
+{
+  addDatapoints();
+
+  mapNavigator.setMapShape(this);
+  mapEWO.workOffline(false);
+  /*if(isDollarDefined(&quot;$lat&quot;) &amp;&amp; isDollarDefined(&quot;$lon&quot;) &amp;&amp; isDollarDefined(&quot;$alt&quot;))
+  {
+    DebugTN(__FUNCTION__, __LINE__, $lat, $lon, $alt, (float)$lat, (float)$lon, 1500);
+    mapEWO.centerOn((float)$lat, (float)$lon, (float)$alt);
+  }
+  else
+  {
+    mapNavigator.goThere();
+  }*/
+  mapNavigator.goThere();
+}
+
+void addDatapoints()
+{
+  dyn_string dpes = mapNavigator.getDPEnames();
+
+  for (int i = 1; i &lt;= dynlen(dpes); ++i)
+  {
+    string dp = dpes[i];
+    dyn_string views;
+    dpGet(dp + &quot;.Internal.views&quot;, views);
+    shared_ptr&lt;MapObject&gt; mapObject = mapNavigator.getMapObject(dpes[i]);
+    for(int j=1; j&lt;=dynlen(views); j++)
+    {
+      string prefix = &quot;min&quot;;
+      dyn_string viewContent = strsplit(views[j], &quot;,&quot;);
+      string panel = viewContent[1];
+      string options = viewContent[2];
+      string methods;
+      if(dynlen(viewContent) &gt; 2)
+      {
+        methods = viewContent[3];
+      }
+      addSymbol(self, panel, &quot;symb_&quot; + i + &quot;_&quot; + j, makeDynString(&quot;$DP:&quot; + dpes[i], &quot;$Number:1&quot;, &quot;$cnsPath:&quot; + mapObject.getCnsPath()), 10, 10, 0, 1, 1, &quot;mapEWO&quot;);
+      //invokeMethod(getShape(myModuleName(), myPanelName(), &quot;symb_&quot; + i + &quot;_&quot; + j), &quot;setIndicatorDirection&quot;, 1);
+      if(methods != &quot;&quot;)
+      {
+        shape s = getShape(myModuleName(), myPanelName(), &quot;symb_&quot; + i + &quot;_&quot; + j);
+        dyn_string methodsContent = strsplit(methods, &quot;|&quot;);
+        mapping m;
+        for(int k=1; k&lt;=dynlen(methodsContent); k++)
+        {
+          dyn_string method = strsplit(methodsContent[k], &quot;:&quot;);
+          DebugTN(__FUNCTION__, __LINE__, &quot;Invoking method: &quot; + method[1] + &quot; &quot;, method[2]);
+          invokeMethod(s, method[1], (int)method[2]);
+        }
+      }
+
+      dyn_string optionsContent = strsplit(options, &quot;|&quot;);
+      mapping m;
+      for(int k=1; k&lt;=dynlen(optionsContent); k++)
+      {
+        dyn_string option = strsplit(optionsContent[k], &quot;:&quot;);
+        m[option[1]] = option[2];
+      }
+
+      mapEWO.addSymbol(&quot;symb_&quot; + i + &quot;_&quot; + j, mapObject.getCoordinates(), m);
+    }
+  }
+}]]></script>
+ </events>
+ <shapes>
+  <shape Name="mapEWO" shapeType="GENERIC" layerId="0">
+   <properties>
+    <prop name="serialId">1</prop>
+    <prop name="Type"></prop>
+    <prop name="RefPoint">1 1</prop>
+    <prop name="Enable">True</prop>
+    <prop name="Visible">True</prop>
+    <prop name="ForeColor">_3DText</prop>
+    <prop name="BackColor">Black</prop>
+    <prop name="TabOrder">0</prop>
+    <prop name="ToolTipText">
+     <prop name="el_GR.utf8"></prop>
+     <prop name="en_US.utf8"></prop>
+     <prop name="de_AT.utf8"></prop>
+     <prop name="ru_RU.utf8"></prop>
+    </prop>
+    <prop name="layoutAlignment">AlignNone</prop>
+    <prop name="snapMode">Point</prop>
+    <prop name="Font">
+     <prop name="el_GR.utf8">Noto Sans,-1,16,5,50,0,0,0,0,0</prop>
+     <prop name="en_US.utf8">Noto Sans,-1,16,5,50,0,0,0,0,0</prop>
+     <prop name="de_AT.utf8">Noto Sans,-1,16,5,50,0,0,0,0,0</prop>
+     <prop name="ru_RU.utf8">Noto Sans,-1,16,5,50,0,0,0,0,0</prop>
+    </prop>
+    <prop name="Location">1 1</prop>
+    <prop name="Size">1181 619</prop>
+    <prop name="ObjectType">Maps.ewo</prop>
+    <extended>
+     <prop type="BOOL" name="showCrosshairs">False</prop>
+     <prop type="BOOL" name="animationsEnabled">True</prop>
+     <prop type="BOOL" name="showGrid">False</prop>
+     <prop type="BOOL" name="showAtmosphere">False</prop>
+     <prop type="BOOL" name="workOffline">True</prop>
+     <prop type="INT" name="zoom">1500</prop>
+     <prop type="FLOAT" name="latitude">47.8301</prop>
+     <prop type="FLOAT" name="longitude">16.5327</prop>
+     <script name="clicked" isEscaped="1"><![CDATA[clicked(float lat, float lon)
+{
+
+}]]></script>
+     <script name="visibleBoxChanged" isEscaped="1"><![CDATA[visibleBoxChanged(float north, float south, float east, float west)
+{
+
+}]]></script>
+    </extended>
+   </properties>
+   <events>
+    <script name="Initialize" isEscaped="1"><![CDATA[main()
+{
+  initialize();
+}]]></script>
+   </events>
+  </shape>
+ </shapes>
+ <groups>
+  <layout parentSerial="4" Name="LAYOUT_GROUP1" serial="1">
+   <properties>
+    <prop idx="0" name="shapeSerial">1</prop>
+    <prop name="isContainerShape">False</prop>
+    <prop name="layoutType">HBox</prop>
+    <prop name="layoutSpacing">0</prop>
+   </properties>
+  </layout>
+  <layout parentSerial="-1" Name="LAYOUT_GROUP2" serial="4">
+   <properties>
+    <prop idx="0" name="groupSerial">1</prop>
+    <prop name="isContainerShape">False</prop>
+    <prop name="layoutType">VBox</prop>
+   </properties>
+  </layout>
+ </groups>
+</panel>

@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<panel version="14">
+ <properties>
+  <prop name="Name">
+   <prop name="el_GR.utf8"></prop>
+   <prop name="en_US.utf8"></prop>
+   <prop name="de_AT.utf8"></prop>
+   <prop name="ru_RU.utf8"></prop>
+  </prop>
+  <prop name="Size">1100 800</prop>
+  <prop name="BackColor">white</prop>
+  <prop name="RefPoint">150 140</prop>
+  <prop name="InitAndTermRef">True</prop>
+  <prop name="SendClick">False</prop>
+  <prop name="RefFileName"></prop>
+  <prop name="DPI">96</prop>
+  <prop name="PDPI">96</prop>
+  <prop name="layoutType">VBox</prop>
+  <prop name="layoutLeftMargin">0</prop>
+  <prop name="layoutRightMargin">0</prop>
+  <prop name="layoutTopMargin">0</prop>
+  <prop name="layoutBottomMargin">0</prop>
+ </properties>
+ <events>
+  <script name="ScopeLib" isEscaped="1"><![CDATA[#uses &quot;classes/examples/MapsDemo.ctl&quot;
+
+MapsDemo myMap;
+]]></script>
+  <script name="Terminate" isEscaped="1"><![CDATA[main()
+{
+  mapSplit.removeModule(&quot;map_module&quot;);
+}]]></script>
+ </events>
+ <shapes>
+  <shape Name="mapSplit" shapeType="Splitter" layerId="0">
+   <properties>
+    <prop name="serialId">51</prop>
+    <prop name="Type"></prop>
+    <prop name="RefPoint">0 0</prop>
+    <prop name="Enable">True</prop>
+    <prop name="Visible">True</prop>
+    <prop name="ForeColor">_3DText</prop>
+    <prop name="BackColor">white</prop>
+    <prop name="TabOrder">6</prop>
+    <prop name="ToolTipText">
+     <prop name="el_GR.utf8"></prop>
+     <prop name="en_US.utf8"></prop>
+     <prop name="de_AT.utf8"></prop>
+     <prop name="ru_RU.utf8"></prop>
+    </prop>
+    <prop name="minimumSize">1100 800</prop>
+    <prop name="layoutAlignment">AlignNone</prop>
+    <prop name="snapMode">Point</prop>
+    <prop name="Font">
+     <prop name="el_GR.utf8">Noto Sans,-1,16,5,50,0,0,0,0,0</prop>
+     <prop name="en_US.utf8">Noto Sans,-1,16,5,50,0,0,0,0,0</prop>
+     <prop name="de_AT.utf8">Noto Sans,-1,16,5,50,0,0,0,0,0</prop>
+     <prop name="ru_RU.utf8">Noto Sans,-1,16,5,50,0,0,0,0,0</prop>
+    </prop>
+    <prop name="Location">0 0</prop>
+    <prop name="Size">1100 800</prop>
+    <extended>
+     <prop type="ENUM" name="orientation">1</prop>
+    </extended>
+   </properties>
+   <events>
+    <script name="Initialize" isEscaped="1"><![CDATA[main()
+{
+  //moduleShowFullScreen(myModuleName());  //go to fullscreen
+
+  //this.setHome();
+  //38.016231689834356, 23.41450592077157
+  //myMap.setHomeCoordinates(&quot;38.01623, 23.41450&quot;);
+  //myMap.setHomeZoom(20);
+  //myMap.setMapObject(&quot;02_7&quot;, &quot;37° 59′ 54.002″ N, 23° 24′ 53.816″ E&quot;);
+
+  /*myMap.setMapObject(&quot;01_1&quot;, &quot;47° 16′ 22″ N, 14° 23′ 16″ E&quot;);
+  myMap.setMapObject(&quot;01_2&quot;, &quot;48° 34' 12\&quot;N, 17° 23' 12\&quot;E&quot;);
+  myMap.setMapObject(&quot;01_3&quot;, &quot;47° 16′ 22″ N, 14° 23′ 16″ E&quot;);
+  myMap.setMapObject(&quot;01_4&quot;, &quot;48° 34' 14\&quot;N, 17° 23' 12\&quot;E&quot;);
+  myMap.setMapObject(&quot;01_5&quot;, &quot;47° 16′ 26″ N, 14° 23′ 33″ E&quot;);
+  myMap.setMapObject(&quot;01_6&quot;, &quot;48° 34' 12\&quot;N, 17° 23' 0\&quot;E&quot;);
+  myMap.setMapObject(&quot;01_7&quot;, &quot;47° 16′ 20″ N, 14° 23′ 1″ E&quot;);*/
+  /*myMap.setMapObject(&quot;02_1&quot;, &quot;47° 16′ 20″ N, 14° 23′ 1″ E&quot;);
+  myMap.setMapObject(&quot;02_2&quot;, &quot;47° 16′ 20″ N, 14° 23′ 1″ E&quot;);
+  myMap.setMapObject(&quot;02_3&quot;, &quot;47° 16′ 20″ N, 14° 23′ 1″ E&quot;);
+  myMap.setMapObject(&quot;02_4&quot;, &quot;47° 16′ 20″ N, 14° 23′ 1″ E&quot;);
+  myMap.setMapObject(&quot;02_5&quot;, &quot;47° 16′ 20″ N, 14° 23′ 1″ E&quot;);
+  myMap.setMapObject(&quot;02_6&quot;, &quot;47° 16′ 20″ N, 14° 23′ 1″ E&quot;);
+  myMap.setMapObject(&quot;02_7&quot;, &quot;47° 16′ 20″ N, 14° 23′ 1″ E&quot;);
+  myMap.setMapObject(&quot;02_8&quot;, &quot;47° 16′ 20″ N, 14° 23′ 1″ E&quot;);*/
+
+  /*myMap.setMapObject(&quot;02_1&quot;, &quot;38.023, 23.449&quot;);
+  myMap.setMapObject(&quot;02_2&quot;, &quot;38.014, 23.441&quot;);
+  myMap.setMapObject(&quot;02_3&quot;, &quot;38.010, 23.433&quot;);
+  myMap.setMapObject(&quot;02_4&quot;, &quot;38.007, 23.428&quot;);
+  myMap.setMapObject(&quot;02_5&quot;, &quot;38.003, 23.422&quot;);
+  myMap.setMapObject(&quot;02_6&quot;, &quot;38.001, 23.418&quot;);
+  myMap.setMapObject(&quot;02_7&quot;, &quot;37.999, 23.414&quot;);
+  myMap.setMapObject(&quot;02_8&quot;, &quot;37.998, 23.407&quot;);
+
+  myMap.setMapObject(&quot;01_1&quot;, &quot;38.007, 23.329&quot;);
+  myMap.setMapObject(&quot;01_2&quot;, &quot;38.004, 23.331&quot;);
+  myMap.setMapObject(&quot;01_3&quot;, &quot;38.000, 23.332&quot;);
+  myMap.setMapObject(&quot;01_4&quot;, &quot;38.005, 23.340&quot;);
+  myMap.setMapObject(&quot;01_5&quot;, &quot;38.003, 23.339&quot;);
+  myMap.setMapObject(&quot;01_6&quot;, &quot;38.001, 23.336&quot;);
+  myMap.setMapObject(&quot;01_7&quot;, &quot;38.000, 23.333&quot;);
+
+  myMap.setMapObject(&quot;AG_D3&quot;, &quot;37.930, 23.728&quot;);
+  myMap.setMapObject(&quot;AG_D4&quot;, &quot;37.932, 23.740&quot;);
+
+  myMap.setMapObject(&quot;BBB1&quot;, &quot;37.816, 23.759&quot;);
+  myMap.setMapObject(&quot;BBB2&quot;, &quot;37.818, 23.768&quot;);
+  myMap.setMapObject(&quot;BBB3&quot;, &quot;37.814, 23.770&quot;);*/
+
+  /*myMap.splitter = this;
+  int h = myMap.getSplitterHeight();*/
+
+  this.addModule(&quot;map_module&quot;);
+  RootPanelOnModule(&quot;examples/maps/subPanels/map.pnl&quot;, &quot;Map&quot;, &quot;map_module&quot;, makeDynString());
+  /*dyn_string dollars = makeDynString();
+  if(isDollarDefined(&quot;$lat&quot;))
+  {
+    dynAppend(dollars, &quot;$lat:&quot; + $lat);
+  }
+  if(isDollarDefined(&quot;$lon&quot;))
+  {
+    dynAppend(dollars, &quot;$lon:&quot; + $lon);
+  }
+  if(isDollarDefined(&quot;$alt&quot;))
+  {
+    dynAppend(dollars, &quot;$alt:&quot; + $alt);
+  }
+  RootPanelOnModule(&quot;examples/maps/subPanels/map.pnl&quot;, &quot;Map&quot;, &quot;map_module&quot;, dollars);
+  this.setCollapsible(&quot;map_module&quot;, FALSE);
+  myMap.goThere();*/
+
+  /*this.addModule(&quot;control_module&quot;);
+  RootPanelOnModule(&quot;examples/maps/subPanels/controls.pnl&quot;, &quot;Control&quot;, &quot;control_module&quot;, makeDynString());
+
+  dyn_int size = makeDynInt(h * 0.8, h * 0.2);
+  this.setSizes(size);*/
+}
+]]></script>
+   </events>
+  </shape>
+ </shapes>
+ <groups>
+  <layout parentSerial="-1" Name="LAYOUT_GROUP1" serial="0">
+   <properties>
+    <prop idx="0" name="shapeSerial">51</prop>
+    <prop name="isContainerShape">False</prop>
+    <prop name="layoutType">VBox</prop>
+   </properties>
+  </layout>
+ </groups>
+</panel>
