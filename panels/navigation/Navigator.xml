@@ -1,0 +1,674 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<panel version="14">
+ <properties>
+  <prop name="Name">
+   <prop name="el_GR.utf8"></prop>
+   <prop name="en_US.utf8"></prop>
+  </prop>
+  <prop name="Size">2072 1080</prop>
+  <prop name="BackColor">WF_Border</prop>
+  <prop name="RefPoint">150 60</prop>
+  <prop name="InitAndTermRef">True</prop>
+  <prop name="SendClick">False</prop>
+  <prop name="RefFileName"></prop>
+  <prop name="DPI">96.0615</prop>
+  <prop name="PDPI">96.0615</prop>
+  <prop name="layoutType">None</prop>
+ </properties>
+ <events>
+  <script name="ScopeLib" isEscaped="1"><![CDATA[#uses &quot;classes/navigation/MapNavigator.ctl&quot;
+#uses &quot;classes/Map/MapObject.ctl&quot;
+#uses &quot;classes/navigation/NavigationController.ctl&quot;
+#uses &quot;classes/navigation/TreeNavigator.ctl&quot;
+#uses &quot;classes/navigation/PanelNavigator.ctl&quot;
+#uses &quot;classes/CNS/CnsRepository.ctl&quot;
+#uses &quot;classes/CNS/CnsNode.ctl&quot;
+
+bool mapOpened = false;
+shared_ptr&lt;NavigationController&gt; navigationController;
+
+]]></script>
+  <script name="Initialize" isEscaped="1"><![CDATA[/**
+ * Populate a WinCC OA Tree widget from a CNS view.
+ *
+ * Expected panel object:
+ *   TREE1   - Tree widget
+ *
+ * Example view identifiers:
+ *   &quot;.Sites:&quot;          Local system
+ *   &quot;System1.Sites:&quot;   Explicit system
+ */
+#uses &quot;classes/AreaManagement/AreaManager.ctl&quot;
+string rootId;
+string rootLabel;
+
+shared_ptr&lt;AreaManager&gt; areaManager;
+string connectedUser;
+
+uint nodeImagesMutex;
+
+mapping nodeImages;
+
+main()
+{
+  EMBEDDED_MODULE1.ModuleName(&quot;Map_Module&quot;);
+  EMBEDDED_MODULE2.ModuleName(&quot;Main_Module&quot;);
+
+  //populateTreeFromCnsView(&quot;System1.WasteWaterPumpStations:&quot;);
+  TREE1.showHeader(false);
+  TREE1.setSorting(0, TRUE);
+  TREE1.setSelectedItem(rootId);
+
+  CnsRepository repository;
+  shared_ptr&lt;CnsNode&gt; root = repository.loadView(&quot;System1.WasteWaterPumpStations:PumpStations&quot;);
+
+  shared_ptr&lt;TreeNavigator&gt; treeNavigator = new TreeNavigator(getShape(myModuleName(), myPanelName(), &quot;TREE1&quot;));
+  treeNavigator.populate(root);
+  shared_ptr&lt;MapNavigator&gt; mapNavigator = new MapNavigator(getShape(myModuleName(), myPanelName(), &quot;EMBEDDED_MODULE1&quot;));
+  //mapNavigator.setMapModule();
+  //mapNavigator.populate(root);
+  shared_ptr&lt;PanelNavigator&gt; panelNavigator = new PanelNavigator(getShape(myModuleName(), myPanelName(), &quot;EMBEDDED_MODULE2&quot;));
+
+  navigationController = new NavigationController();
+
+  /*navigator = Navigator::getInstance();
+  navigator.setTreeNavigator(treeNavigator);
+  navigator.setMapNavigator(mapNavigator);
+  navigator.setPanelNavigator(panelNavigator);
+  //navigator.setTreeWidget(getShape(myModuleName(), myPanelName(), &quot;TREE1&quot;));
+  /*areaManager = AreaManager::instance();
+  dpGet(myUiDpName()+&quot;.UserName&quot;, connectedUser);
+  process(&quot;&quot;);*/
+
+  navigationController.navigateTo(root.cnsPath);
+}
+
+
+/**
+ * Clears the widget and loads every CNS tree belonging to the view.
+ */
+bool populateTreeFromCnsView(string viewPath)
+{
+  dyn_string cnsTrees;
+
+  TREE1.clear();
+
+  if (TREE1.columns == 0)
+  {
+    TREE1.addColumn(&quot;Name&quot;);
+  }
+
+  // Optional Tree widget configuration.
+  TREE1.rootIsDecorated = TRUE;
+  TREE1.itemsExpandable = TRUE;
+  TREE1.updatesEnabled = FALSE;
+
+  if (!normalizeCnsViewPath(viewPath))
+  {
+    DebugN(&quot;Invalid CNS view path:&quot;, viewPath);
+    TREE1.updatesEnabled = TRUE;
+    return FALSE;
+  }
+
+  // Use the view path as the Tree item ID.
+  rootId = viewPath;
+
+  // Remove the trailing ':' for display.
+  langString viewNames;
+  cnsGetViewDisplayNames(rootId, viewNames);
+  rootLabel = viewNames.text();
+
+  // Create the root item.
+  TREE1.appendItemNC(&quot;&quot;, rootId, rootLabel);
+
+  if (!cnsGetTrees(viewPath, cnsTrees))
+  {
+    DebugN(&quot;Could not read CNS view:&quot;, viewPath);
+    TREE1.updatesEnabled = TRUE;
+    return FALSE;
+  }
+
+  for (int i = 1; i &lt;= dynlen(cnsTrees); i++)
+  {
+    string treePath = cnsTrees[i];
+
+    // An empty parent ID creates a top-level Tree widget item.
+    if (!appendCnsNodeRecursive(rootId, treePath))
+    {
+      DebugN(&quot;Could not load CNS tree:&quot;, treePath);
+    }
+  }
+
+  TREE1.updatesEnabled = TRUE;
+
+  // Optional: open the first few levels.
+  TREE1.expandToDepth(2);
+  TREE1.adjustColumn(0);
+
+  return TRUE;
+}
+
+
+/**
+ * Adds one CNS node and recursively adds all its children.
+ *
+ * parentItemId:
+ *   Tree widget ID of the parent. Empty for top-level items.
+ *
+ * cnsPath:
+ *   Full CNS identifier, for example:
+ *   &quot;.Sites:Europe.Austria&quot;
+ */
+bool appendCnsNodeRecursive(string parentItemId, string cnsPath)
+{
+  dyn_string children;
+  string label = getCnsNodeLabel(cnsPath);
+
+  TREE1.appendItemNC(parentItemId, cnsPath, label);
+  string dp;
+  cnsGetId(cnsPath, dp);
+  if(dp != &quot;&quot; &amp;&amp; dpExists(dp + &quot;.Internal.lat&quot;))
+  {
+    string lat, lon;
+    dpGet(dp + &quot;.Internal.lat&quot;, lat,
+          dp + &quot;.Internal.lon&quot;, lon);
+    mapNavigator.setMapObject(dp, new MapObject(lat, lon, dp, cnsPath));
+  }
+
+  if (cnsGetChildren(cnsPath, children))
+  {
+    for (int i = 1; i &lt;= dynlen(children); i++)
+    {
+      appendCnsNodeRecursive(cnsPath, children[i]);
+    }
+  }
+
+  return TRUE;
+}
+
+
+/**
+ * Returns the display name in the currently active project language.
+ * Falls back to the technical CNS node ID if no display name is available.
+ */
+string getCnsNodeLabel(string cnsPath)
+{
+  langString displayNames;
+
+  if (cnsGetDisplayNames(cnsPath, displayNames))
+  {
+    string label = displayNames.text();
+
+    if (label != &quot;&quot;)
+      return label;
+  }
+
+  return getTechnicalNodeName(cnsPath);
+}
+
+
+/**
+ * Extracts the final technical node name from a standard CNS ID path.
+ *
+ * Examples:
+ *   &quot;.Sites:Europe&quot;                 -&gt; &quot;Europe&quot;
+ *   &quot;.Sites:Europe.Austria.Vienna&quot; -&gt; &quot;Vienna&quot;
+ *
+ * This assumes the standard &quot;.&quot; node separator. If the CNS view uses
+ * custom separators, use cnsGetViewSeparators() or cnsSubStr() instead.
+ */
+string getTechnicalNodeName(string cnsPath)
+{
+  int colonPos;
+  int dotPos;
+  string nodePart;
+
+  colonPos = strpos(cnsPath, &quot;:&quot;);
+
+  if (colonPos &lt; 0)
+    return cnsPath;
+
+  nodePart = substr(cnsPath, colonPos + 1);
+
+  dotPos = strrpos(nodePart, &quot;.&quot;);
+
+  if (dotPos &gt;= 0)
+    return substr(nodePart, dotPos + 1);
+
+  return nodePart;
+}
+
+
+/**
+ * Adds the trailing colon when only a view name/path was supplied.
+ *
+ * Accepted:
+ *   &quot;.Sites&quot;
+ *   &quot;.Sites:&quot;
+ *   &quot;System1.Sites&quot;
+ *   &quot;System1.Sites:&quot;
+ */
+bool normalizeCnsViewPath(string &amp;viewPath)
+{
+  viewPath.trim();
+
+  if (viewPath == &quot;&quot;)
+    return FALSE;
+
+  if (substr(viewPath, strlen(viewPath) - 1, 1) != &quot;:&quot;)
+    viewPath += &quot;:&quot;;
+
+  return TRUE;
+}
+
+
+bool process(string node)
+{
+  // Leaf
+  dyn_string children =   TREE1.children(node);
+  if (dynlen(children) == 0)
+  {
+    string fileName;
+    cnsGetProperty(node, &quot;PanelFileName&quot;, fileName);
+    if (fileName == &quot;&quot;)
+    {
+      TREE1.setVisible(node, false);
+      return false;
+    }
+
+    string dp;
+    cnsGetId(node, dp);
+    strreplace(dp, getSystemName(), &quot;&quot;);
+
+    DebugTN(__FUNCTION__, __LINE__, node, dp);
+
+    if(areaManager.userHasPermission(connectedUser, dp, 0))
+    {
+      TREE1.setVisible(node, true);
+      connectAlarmNode(node);
+      return true;
+    }
+    else
+    {
+      TREE1.setVisible(node, false);
+      return false;
+    }
+  }
+
+  int visibleChildren = 0;
+
+  for (int j = 1; j &lt;=dynlen(children); j++)
+  {
+    if (process(children[j]))
+    {
+      visibleChildren++;
+    }
+  }
+
+  if (visibleChildren == 0)
+  {
+    TREE1.setVisible(node, false);
+    return false;
+  }
+
+
+  TREE1.setVisible(node, true);
+  //connectAlarmNode(node);
+  return true;
+}
+
+void connectAlarmNode(string node)
+{
+  string dp;
+  cnsGetId(node, dp);
+  dpConnectUserData( &quot;ShowConnectionCB&quot;, node,
+                       dp + &quot;.Internal.Comm&quot;);
+}
+
+void ShowConnectionCB(string node,
+                      string strDP1, bool value)
+{
+  synchronized(nodeImagesMutex)
+  {
+    if (value)
+    {
+      nodeImages[node] = &quot;themes/modern/StandardIcons/plc_disconnected_failure_20.png&quot;;
+    }
+    else
+    {
+      nodeImages[node] = &quot;themes/modern/StandardIcons/plc_connected_green_20.png&quot;;
+    }
+  }
+
+  updateImage(node);
+}
+
+void updateImage(string node)
+{
+  synchronized(nodeImagesMutex)
+  {
+    if(mappingHasKey(nodeImages, node))
+    {
+      TREE1.setIcon(node, 0, nodeImages[node]);
+    }
+  }
+}]]></script>
+ </events>
+ <shapes>
+  <shape Name="RECTANGLE8" shapeType="RECTANGLE" layerId="0">
+   <properties>
+    <prop name="serialId">32</prop>
+    <prop name="Type"></prop>
+    <prop name="RefPoint">1190 0</prop>
+    <prop name="Enable">True</prop>
+    <prop name="Visible">True</prop>
+    <prop name="ForeColor">{0,0,0}</prop>
+    <prop name="BackColor">Backround Color</prop>
+    <prop name="TabOrder">5</prop>
+    <prop name="ToolTipText">
+     <prop name="el_GR.utf8"></prop>
+     <prop name="en_US.utf8"></prop>
+    </prop>
+    <prop name="layoutAlignment">AlignNone</prop>
+    <prop name="snapMode">Point</prop>
+    <prop name="DashBackColor">_Transparent</prop>
+    <prop name="AntiAliased">False</prop>
+    <prop name="LineType">[solid,oneColor,JoinBevel,CapProjecting,1]</prop>
+    <prop name="BorderZoomable">False</prop>
+    <prop name="BorderScalable">False</prop>
+    <prop name="FillType">[solid]</prop>
+    <prop name="Geometry">19.16 0 0 1.25 -20874.4 5</prop>
+    <prop name="BorderStyle">Normal</prop>
+    <prop name="Location">1190 0</prop>
+    <prop name="Size">-101 41</prop>
+    <prop name="CornerRadius">0</prop>
+    <prop name="Transformable">True</prop>
+   </properties>
+  </shape>
+  <shape Name="ELLIPSE1" shapeType="ELLIPSE" layerId="0">
+   <properties>
+    <prop name="serialId">45</prop>
+    <prop name="Type"></prop>
+    <prop name="RefPoint">1790 150</prop>
+    <prop name="Enable">True</prop>
+    <prop name="Visible">True</prop>
+    <prop name="ForeColor">{0,153,153}</prop>
+    <prop name="BackColor">WF_Border</prop>
+    <prop name="TabOrder">14</prop>
+    <prop name="ToolTipText">
+     <prop name="el_GR.utf8"></prop>
+     <prop name="en_US.utf8"></prop>
+    </prop>
+    <prop name="layoutAlignment">AlignNone</prop>
+    <prop name="snapMode">Point</prop>
+    <prop name="DashBackColor">_Transparent</prop>
+    <prop name="AntiAliased">True</prop>
+    <prop name="LineType">[solid,oneColor,JoinBevel,CapProjecting,2]</prop>
+    <prop name="BorderZoomable">False</prop>
+    <prop name="BorderScalable">False</prop>
+    <prop name="FillType">[solid]</prop>
+    <prop name="Geometry">1 0 0 1 6.499999999999545 4.240000000000009</prop>
+    <prop name="Center">1892.105578749891 26.25999999999998</prop>
+    <prop name="X-Radius">21.5</prop>
+    <prop name="Y-Radius">20.5</prop>
+   </properties>
+  </shape>
+  <shape Name="TREE1" shapeType="TREE" layerId="0">
+   <properties>
+    <prop name="serialId">2</prop>
+    <prop name="Type"></prop>
+    <prop name="RefPoint">10 -7.931034482758673</prop>
+    <prop name="Enable">True</prop>
+    <prop name="Visible">True</prop>
+    <prop name="ForeColor">_WindowText</prop>
+    <prop name="BackColor">_Window</prop>
+    <prop name="TabOrder">1</prop>
+    <prop name="ToolTipText">
+     <prop name="el_GR.utf8"></prop>
+     <prop name="en_US.utf8"></prop>
+    </prop>
+    <prop name="layoutAlignment">AlignNone</prop>
+    <prop name="snapMode">Point</prop>
+    <prop name="Font">
+     <prop name="el_GR.utf8">Noto Sans,-1,15,5,50,0,0,0,0,0,Regular</prop>
+     <prop name="en_US.utf8">Noto Sans,-1,16,5,50,0,0,0,0,0</prop>
+    </prop>
+    <prop name="Location">10 65.99999999999996</prop>
+    <prop name="Size">305 805</prop>
+    <extended>
+     <script name="selectionChanged" isEscaped="1"><![CDATA[selectionChanged(string id)
+{
+  navigator.navigate(id);
+}]]></script>
+    </extended>
+   </properties>
+  </shape>
+  <shape Name="EMBEDDED_MODULE1" shapeType="EMBEDDED_MODULE" layerId="0">
+   <properties>
+    <prop name="serialId">4</prop>
+    <prop name="Type"></prop>
+    <prop name="RefPoint">390 65.99999999999996</prop>
+    <prop name="Enable">True</prop>
+    <prop name="Visible">True</prop>
+    <prop name="ForeColor">_3DText</prop>
+    <prop name="BackColor">_3DFace</prop>
+    <prop name="TabOrder">3</prop>
+    <prop name="ToolTipText">
+     <prop name="el_GR.utf8"></prop>
+     <prop name="en_US.utf8"></prop>
+    </prop>
+    <prop name="layoutAlignment">AlignNone</prop>
+    <prop name="snapMode">Point</prop>
+    <prop name="Font">
+     <prop name="el_GR.utf8">Noto Sans,-1,16,5,50,0,0,0,0,0</prop>
+     <prop name="en_US.utf8">Noto Sans,-1,16,5,50,0,0,0,0,0</prop>
+    </prop>
+    <prop name="Location">330 66</prop>
+    <prop name="Size">1680 895</prop>
+    <extended>
+     <prop type="INT" name="newPanelAnimDuration">0</prop>
+     <prop type="INT" name="oldPanelAnimDuration">0</prop>
+     <prop type="BOOL" name="newPanelAnimateOpacity">True</prop>
+     <prop type="BOOL" name="oldPanelAnimateOpacity">True</prop>
+     <prop type="BOOL" name="newPanelAnimateSize">True</prop>
+     <prop type="BOOL" name="oldPanelAnimateSize">True</prop>
+     <prop type="CHAR_STRING" name="newPanelAnimType">TopLeft</prop>
+     <prop type="CHAR_STRING" name="oldPanelAnimType">BottomRight</prop>
+    </extended>
+   </properties>
+  </shape>
+  <reference parentSerial="-1" Name="PANEL_REF1" referenceId="0">
+   <properties>
+    <prop name="FileName">para/PanelTopology/templates/NEWTEMPLATE/infoPanel_1920_1080_NEWTEMPLATE.pnl</prop>
+    <prop name="Location">364.4690213606396 1030</prop>
+    <prop name="TabOrder">4</prop>
+    <prop name="layoutAlignment">AlignNone</prop>
+   </properties>
+  </reference>
+  <shape Name="TextField1" shapeType="TEXT_FIELD" layerId="0">
+   <properties>
+    <prop name="serialId">33</prop>
+    <prop name="Type"></prop>
+    <prop name="RefPoint">104.2654659762717 236.9462499999999</prop>
+    <prop name="Enable">True</prop>
+    <prop name="Visible">True</prop>
+    <prop name="ForeColor">STD_text</prop>
+    <prop name="BackColor">WF_Border</prop>
+    <prop name="TabOrder">6</prop>
+    <prop name="ToolTipText">
+     <prop name="el_GR.utf8"></prop>
+     <prop name="en_US.utf8"></prop>
+     <prop name="de_AT.utf8"></prop>
+     <prop name="ru_RU.utf8"></prop>
+    </prop>
+    <prop name="layoutAlignment">AlignCenter</prop>
+    <prop name="snapMode">Point</prop>
+    <prop name="Font">
+     <prop name="el_GR.utf8">Arial,-1,13,5,75,0,0,0,0,0</prop>
+     <prop name="en_US.utf8">Arial,-1,13,5,75,0,0,0,0,0</prop>
+     <prop name="de_AT.utf8">Arial,10,-1,5,75,0,0,0,0,0</prop>
+     <prop name="ru_RU.utf8">Arial,10,-1,5,75,0,0,0,0,0</prop>
+    </prop>
+    <prop name="Location">57.06046597627177 19.94624999999999</prop>
+    <prop name="Size">106 23</prop>
+    <prop name="BorderStyle">Normal</prop>
+    <prop name="Editable">False</prop>
+    <prop name="ClearButtonEnabled">False</prop>
+    <prop name="TextFormat">[0s,,,AlignHCenter|AlignVCenter]</prop>
+    <prop name="AllowEmptyNumeric">False</prop>
+    <prop name="ulcClientSideWidget">False</prop>
+   </properties>
+   <events>
+    <script name="Initialize" isEscaped="1"><![CDATA[main()
+{
+STD_showUser();
+string User;
+getValue(&quot;TextField1&quot;,&quot;text&quot;,User);
+dpSet(&quot;Current_User.:_original.._value&quot;,User);
+}
+]]></script>
+    <script name="RightMousePressed" isEscaped="1"><![CDATA[main()
+{
+STD_UserPopup();
+}
+]]></script>
+   </events>
+  </shape>
+  <shape Name="RECTANGLE9" shapeType="RECTANGLE" layerId="0">
+   <properties>
+    <prop name="serialId">34</prop>
+    <prop name="Type"></prop>
+    <prop name="RefPoint">40 220</prop>
+    <prop name="Enable">True</prop>
+    <prop name="Visible">True</prop>
+    <prop name="ForeColor">_Transparent</prop>
+    <prop name="BackColor">{255,255,255}</prop>
+    <prop name="TabOrder">7</prop>
+    <prop name="ToolTipText">
+     <prop name="el_GR.utf8"></prop>
+     <prop name="en_US.utf8"></prop>
+    </prop>
+    <prop name="layoutAlignment">AlignNone</prop>
+    <prop name="snapMode">Point</prop>
+    <prop name="DashBackColor">_Transparent</prop>
+    <prop name="AntiAliased">False</prop>
+    <prop name="LineType">[solid,oneColor,JoinBevel,CapProjecting,1]</prop>
+    <prop name="BorderZoomable">False</prop>
+    <prop name="BorderScalable">False</prop>
+    <prop name="FillType" SharedPixmap="1">[pattern,[fit,any,pictures/PT_user.png]]</prop>
+    <prop name="Geometry">1 0 0 1 -17.73453402372831 -205</prop>
+    <prop name="BorderStyle">Normal</prop>
+    <prop name="Location">40 220</prop>
+    <prop name="Size">31 31</prop>
+    <prop name="CornerRadius">0</prop>
+    <prop name="Transformable">True</prop>
+   </properties>
+   <events>
+    <script name="Clicked" isEscaped="1"><![CDATA[main(mapping event)
+{
+  STD_UserPopup();
+}]]></script>
+   </events>
+  </shape>
+  <reference parentSerial="-1" Name="PANEL_REF94" referenceId="1">
+   <properties>
+    <prop name="FileName">objects/General_Oblects/Exit_Button.pnl</prop>
+    <prop name="Location">1917.225578749898 83</prop>
+    <prop name="Geometry">0.88 0 0 0.88 231.5670694499805 5.859999999999989</prop>
+    <prop name="TabOrder">11</prop>
+    <prop name="layoutAlignment">AlignNone</prop>
+   </properties>
+  </reference>
+  <shape Name="Clock3" shapeType="CLOCK" layerId="0">
+   <properties>
+    <prop name="serialId">41</prop>
+    <prop name="Type"></prop>
+    <prop name="RefPoint">-785.4971935513555 51</prop>
+    <prop name="Enable">True</prop>
+    <prop name="Visible">True</prop>
+    <prop name="ForeColor">_WindowText</prop>
+    <prop name="BackColor">betrKamQuit</prop>
+    <prop name="TabOrder">13</prop>
+    <prop name="ToolTipText">
+     <prop name="el_GR.utf8"></prop>
+     <prop name="en_US.utf8"></prop>
+     <prop name="de_AT.utf8"></prop>
+     <prop name="ru_RU.utf8"></prop>
+    </prop>
+    <prop name="layoutAlignment">AlignCenter</prop>
+    <prop name="snapMode">Point</prop>
+    <prop name="Font">
+     <prop name="el_GR.utf8">Courier New,-1,12,5,50,0,0,0,0,0</prop>
+     <prop name="en_US.utf8">Courier New,-1,12,5,50,0,0,0,0,0</prop>
+     <prop name="de_AT.utf8">Courier New,-1,12,5,50,0,0,0,0,0</prop>
+     <prop name="ru_RU.utf8">Courier New,-1,12,5,50,0,0,0,0,0</prop>
+    </prop>
+    <prop name="Location">1685.225931952543 19</prop>
+    <prop name="Size">185 23</prop>
+    <prop name="BorderStyle">Sunken</prop>
+    <prop name="Digital">True</prop>
+    <prop name="ShowDate">False</prop>
+    <prop name="ShowTime">True</prop>
+    <prop name="SingleLine">True</prop>
+    <prop name="TimeFirst">False</prop>
+    <prop name="DateFormat">%x</prop>
+    <prop name="TimeFormat">%H:%M:%S  - %d/%m/%y</prop>
+    <prop name="DateFont">
+     <prop name="el_GR.utf8">Arial,-1,13,5,75,0,0,0,0,0</prop>
+     <prop name="en_US.utf8">Arial,-1,13,5,75,0,0,0,0,0</prop>
+     <prop name="de_AT.utf8">Arial,-1,13,5,75,0,0,0,0,0</prop>
+     <prop name="ru_RU.utf8">Arial,-1,13,5,75,0,0,0,0,0</prop>
+    </prop>
+    <prop name="TimeFont">
+     <prop name="el_GR.utf8">MS Shell Dlg 2,-1,15,5,75,0,0,0,0,0,Έντονα</prop>
+     <prop name="en_US.utf8">Arial,-1,13,5,75,0,0,0,0,0</prop>
+     <prop name="de_AT.utf8">Arial,-1,13,5,75,0,0,0,0,0</prop>
+     <prop name="ru_RU.utf8">Arial,-1,13,5,75,0,0,0,0,0</prop>
+    </prop>
+   </properties>
+  </shape>
+  <reference parentSerial="-1" Name="PANEL_REF91" referenceId="2">
+   <properties>
+    <prop name="FileName">objects/General_Oblects/Navi.pnl</prop>
+    <prop name="Location">262 83.67354072956365</prop>
+    <prop name="Geometry">1 0 0 1 1352.225931952543 11.88020927043627</prop>
+    <prop name="TabOrder">12</prop>
+    <prop name="layoutAlignment">AlignNone</prop>
+   </properties>
+  </reference>
+  <shape Name="EMBEDDED_MODULE2" shapeType="EMBEDDED_MODULE" layerId="0">
+   <properties>
+    <prop name="serialId">77</prop>
+    <prop name="Type"></prop>
+    <prop name="RefPoint">390 65.99999999999994</prop>
+    <prop name="Enable">True</prop>
+    <prop name="Visible">False</prop>
+    <prop name="ForeColor">_3DText</prop>
+    <prop name="BackColor">_3DFace</prop>
+    <prop name="TabOrder">15</prop>
+    <prop name="ToolTipText">
+     <prop name="el_GR.utf8"></prop>
+     <prop name="en_US.utf8"></prop>
+    </prop>
+    <prop name="layoutAlignment">AlignNone</prop>
+    <prop name="snapMode">Point</prop>
+    <prop name="Font">
+     <prop name="el_GR.utf8">Noto Sans,-1,16,5,50,0,0,0,0,0</prop>
+     <prop name="en_US.utf8">Noto Sans,-1,16,5,50,0,0,0,0,0</prop>
+    </prop>
+    <prop name="Location">330 65.99999999999999</prop>
+    <prop name="Size">1680 895</prop>
+    <extended>
+     <prop type="INT" name="newPanelAnimDuration">0</prop>
+     <prop type="INT" name="oldPanelAnimDuration">0</prop>
+     <prop type="BOOL" name="newPanelAnimateOpacity">True</prop>
+     <prop type="BOOL" name="oldPanelAnimateOpacity">True</prop>
+     <prop type="BOOL" name="newPanelAnimateSize">True</prop>
+     <prop type="BOOL" name="oldPanelAnimateSize">True</prop>
+     <prop type="CHAR_STRING" name="newPanelAnimType">TopLeft</prop>
+     <prop type="CHAR_STRING" name="oldPanelAnimType">BottomRight</prop>
+    </extended>
+   </properties>
+  </shape>
+ </shapes>
+</panel>
