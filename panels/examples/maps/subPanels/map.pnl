@@ -1,0 +1,183 @@
+V 14
+4
+LANG:10012 12 mapMainPanel
+LANG:10001 12 mapMainPenel
+LANG:10000 0 
+LANG:10027 0 
+PANEL,-1 -1 1183 696 N "white" 0
+E E E E E 1 -1 -1 0  -2.842170943040401e-14 0
+""0  1
+E "#uses \"classes/Map/MapNavigator.ctl\"
+#uses \"classes/Map/MapObject.ctl\"
+
+MapNavigator mapNavigator;
+
+void initialize()
+{
+  addDatapoints();
+
+  mapNavigator.setMapShape(this);
+  mapEWO.workOffline(false);
+  /*if(isDollarDefined(\"$lat\") && isDollarDefined(\"$lon\") && isDollarDefined(\"$alt\"))
+  {
+    DebugTN(__FUNCTION__, __LINE__, $lat, $lon, $alt, (float)$lat, (float)$lon, 1500);
+    mapEWO.centerOn((float)$lat, (float)$lon, (float)$alt);
+  }
+  else
+  {
+    mapNavigator.goThere();
+  }*/
+  mapNavigator.goThere();
+}
+
+void addDatapoints()
+{
+  dyn_string dpes = mapNavigator.getDPEnames();
+
+  for (int i = 1; i <= dynlen(dpes); ++i)
+  {
+    string dp = dpes[i];
+    dyn_string views;
+    dpGet(dp + \".Internal.views\", views);
+    shared_ptr<MapObject> mapObject = mapNavigator.getMapObject(dpes[i]);
+    for(int j=1; j<=dynlen(views); j++)
+    {
+      string prefix = \"min\";
+      dyn_string viewContent = strsplit(views[j], \",\");
+      string panel = viewContent[1];
+      string options = viewContent[2];
+      string methods;
+      if(dynlen(viewContent) > 2)
+      {
+        methods = viewContent[3];
+      }
+      addSymbol(self, panel, \"symb_\" + i + \"_\" + j, makeDynString(\"$DP:\" + dpes[i], \"$Number:1\", \"$cnsPath:\" + mapObject.getCnsPath()), 10, 10, 0, 1, 1, \"mapEWO\");
+      //invokeMethod(getShape(myModuleName(), myPanelName(), \"symb_\" + i + \"_\" + j), \"setIndicatorDirection\", 1);
+      if(methods != \"\")
+      {
+        shape s = getShape(myModuleName(), myPanelName(), \"symb_\" + i + \"_\" + j);
+        dyn_string methodsContent = strsplit(methods, \"|\");
+        mapping m;
+        for(int k=1; k<=dynlen(methodsContent); k++)
+        {
+          dyn_string method = strsplit(methodsContent[k], \":\");
+          DebugTN(__FUNCTION__, __LINE__, \"Invoking method: \" + method[1] + \" \", method[2]);
+          invokeMethod(s, method[1], (int)method[2]);
+        }
+      }
+
+      dyn_string optionsContent = strsplit(options, \"|\");
+      mapping m;
+      for(int k=1; k<=dynlen(optionsContent); k++)
+      {
+        dyn_string option = strsplit(optionsContent[k], \":\");
+        m[option[1]] = option[2];
+      }
+
+      mapEWO.addSymbol(\"symb_\" + i + \"_\" + j, mapObject.getCoordinates(), m);
+    }
+  }
+}" 0
+ 4
+"CBRef" "1"
+"EClose" E
+"dpi" "96"
+"pdpi" "96"
+2 1 1 1 1 0 1 0
+""
+DISPLAY_LAYER, 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0
+LAYER, 0 
+2
+LANG:10012 0 
+LANG:10001 0 
+29 1
+"mapEWO"
+""
+1 1 1 E E E 1 E 1 E N "_3DText" E N "Black" E E
+ E E
+0 0 0 0 0 0
+E E E
+0
+4
+LANG:10012 0 
+LANG:10001 0 
+LANG:10000 0 
+LANG:10027 0 
+
+9
+"showCrosshairs" "bool FALSE"
+"animationsEnabled" "bool TRUE"
+"showGrid" "bool FALSE"
+"showAtmosphere" "bool FALSE"
+"workOffline" "bool TRUE"
+"zoom" "int 1500"
+"latitude" "float 47.8301"
+"longitude" "float 16.5327"
+"layoutAlignment" "AlignNone"
+4
+LANG:10012 30 Noto Sans,-1,16,5,50,0,0,0,0,0
+LANG:10001 30 Noto Sans,-1,16,5,50,0,0,0,0,0
+LANG:10000 30 Noto Sans,-1,16,5,50,0,0,0,0,0
+LANG:10027 30 Noto Sans,-1,16,5,50,0,0,0,0,0
+0  1 1 1181.000000000025 618.9999999999945
+8 Maps.ewo
+2
+0 "clicked" "(float lat, float lon)"
+""
+0 "visibleBoxChanged" "(float north, float south, float east, float west)"
+""
+"main()
+{
+  initialize();
+}" 0
+0
+LAYER, 1 
+2
+LANG:10012 0 
+LANG:10001 0 
+0
+LAYER, 2 
+2
+LANG:10012 0 
+LANG:10001 0 
+0
+LAYER, 3 
+2
+LANG:10012 0 
+LANG:10001 0 
+0
+LAYER, 4 
+2
+LANG:10012 0 
+LANG:10001 0 
+0
+LAYER, 5 
+2
+LANG:10012 0 
+LANG:10001 0 
+0
+LAYER, 6 
+2
+LANG:10012 0 
+LANG:10001 0 
+0
+LAYER, 7 
+2
+LANG:10012 0 
+LANG:10001 0 
+0
+4 1 "LAYOUT_GROUP1" 4
+1 0 
+1 
+
+"S 1" "0 0 1 1"
+"" ""
+0 1 0 1 0
+4 4 "LAYOUT_GROUP2" -1
+0 1 
+
+1 
+"G 1" "0 0 1 1"
+"" ""
+0 2 0 0
+0
