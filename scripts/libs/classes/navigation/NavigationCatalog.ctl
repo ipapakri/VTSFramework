@@ -8,7 +8,7 @@
 
 //--------------------------------------------------------------------------------
 // Libraries used (#uses)
-#uses "classes/navigation/commands/NavigationCommand"
+#uses "classes/navigation/NavigationTarget"
 
 
 //--------------------------------------------------------------------------------
@@ -16,8 +16,10 @@
 
 //--------------------------------------------------------------------------------
 /**
+  Resolves a navigation id to a target. CNS is one implementation; projects
+  without CNS can supply another catalog.
 */
-class NavigationRoute
+class NavigationCatalog
 {
 //--------------------------------------------------------------------------------
 //@public members
@@ -26,27 +28,14 @@ class NavigationRoute
   //------------------------------------------------------------------------------
   /** The Default Constructor.
   */
-  public NavigationRoute(string routeId,
-                         shared_ptr<NavigationCommand> navigationCommand)
+  public NavigationCatalog()
   {
-    this.routeId = routeId;
-    this.navigationCommand = navigationCommand;
   }
 
-  public string getRoureId()
+  public shared_ptr<NavigationTarget> resolve(string id)
   {
-    return this.routeId;
-  }
-
-  public bool execute()
-  {
-    if (!navigationCommand)
-    {
-      DebugTN(__FILE__, __FUNCTION__, __LINE__, "Route has no command:", routeId);
-      return false;
-    }
-
-    return navigationCommand.execute();
+    throw(makeError("", PRIO_SEVERE, ERR_IMPL, 1, "Method resolve is abstract in this context, \"NavigationCatalog\""));
+    return nullptr;
   }
 
 //--------------------------------------------------------------------------------
@@ -56,6 +45,4 @@ class NavigationRoute
 //--------------------------------------------------------------------------------
 //@private members
 //--------------------------------------------------------------------------------
-  private string routeId;
-  private shared_ptr<NavigationCommand> navigationCommand;
 };

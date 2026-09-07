@@ -8,7 +8,9 @@
 
 //--------------------------------------------------------------------------------
 // Libraries used (#uses)
-#uses "classes/CNS/CnsNode"
+#uses "classes/CNS/CnsNode.ctl"
+#uses "classes/navigation/NavigationTarget"
+#uses "classes/navigation/NavigationView"
 
 
 //--------------------------------------------------------------------------------
@@ -16,8 +18,10 @@
 
 //--------------------------------------------------------------------------------
 /**
+  Generic tree surface. Product-specific extras (PLC icons, area filtering, ...)
+  belong in a subclass that overrides onNodeAdded().
 */
-class TreeNavigator
+class TreeNavigator : NavigationView
 {
 //--------------------------------------------------------------------------------
 //@public members
@@ -26,13 +30,21 @@ class TreeNavigator
   //------------------------------------------------------------------------------
   /** The Default Constructor.
   */
-  public TreeNavigator(shape treeWidget)/*,
-                       string cnsView)*/
+  public TreeNavigator(shape treeWidget)
   {
     this.treeWidget = treeWidget;
     treeWidget.addColumn("Name");
     treeWidget.expandToDepth(2);
     treeWidget.adjustColumn(0);
+  }
+
+  public bool apply(shared_ptr<NavigationTarget> target)
+  {
+    if (!target)
+      return false;
+
+    select(target.id);
+    return true;
   }
 
   public void select(string id)
@@ -64,9 +76,7 @@ class TreeNavigator
   {
     treeWidget.showHeader(false);
     treeWidget.setSorting(0, TRUE);
-    //TREE1.setSelectedItem(rootId);
     addNode(node, parentId);
-    //tree.expandToDepth(2);
     treeWidget.expandAll();
     treeWidget.adjustColumn(0);
   }
@@ -75,69 +85,38 @@ class TreeNavigator
 //@protected members
 //--------------------------------------------------------------------------------
 
+  /**
+    Called after each tree item is created. Default is a no-op.
+    Subclasses attach comms icons, hide unauthorized nodes, etc. here.
+  */
+  protected void onNodeAdded(shared_ptr<CnsNode> node)
+  {
+  }
+
 //--------------------------------------------------------------------------------
 //@private members
 //--------------------------------------------------------------------------------
 
   private void addNode(shared_ptr<CnsNode> node, string parentId = "")
   {
+    if (!node)
+      return;
+
     treeWidget.appendItemNC(
       parentId,
       node.cnsPath,
       node.label
     );
-    connectAlarmNode(node.cnsPath);
+    onNodeAdded(node);
 
     for (int i = 1; i <= dynlen(node.children); i++)
     {
-      populate(
+      addNode(
         node.children[i],
         node.cnsPath
       );
     }
   }
 
-  private void connectAlarmNode(string node)
-  {
-    string dp;
-    cnsGetId(node, dp);
-    if(dpExists(dp + ".Internal.Comm"))
-    {
-      dpConnectUserData("ShowConnectionCB", node,
-                         dp + ".Internal.Comm");
-    }
-  }
-
-  private void ShowConnectionCB(string node,
-                                string strDP1, bool value)
-  {
-    synchronized(nodeImagesMutex)
-    {
-      if (value)
-      {
-        nodeImages[node] = "themes/modern/StandardIcons/plc_disconnected_failure_20.png";
-      }
-      else
-      {
-        nodeImages[node] = "themes/modern/StandardIcons/plc_connected_green_20.png";
-      }
-    }
-
-    updateImage(node);
-  }
-
-  private void updateImage(string node)
-  {
-    synchronized(nodeImagesMutex)
-    {
-      if(mappingHasKey(nodeImages, node))
-      {
-        treeWidget.setIcon(node, 0, nodeImages[node]);
-      }
-    }
-  }
-
   private shape treeWidget;
-  private uint nodeImagesMutex;
-  private mapping nodeImages;
 };

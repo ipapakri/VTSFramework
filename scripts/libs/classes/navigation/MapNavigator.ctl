@@ -8,14 +8,18 @@
 
 //--------------------------------------------------------------------------------
 // Libraries used (#uses)
+#uses "classes/navigation/NavigationTarget"
+#uses "classes/navigation/NavigationView"
+
 
 //--------------------------------------------------------------------------------
 // Variables and Constants
 
 //--------------------------------------------------------------------------------
 /**
+  Map surface. mapWidget should be the Map EWO (the object that provides centerOn).
 */
-class MapNavigator
+class MapNavigator : NavigationView
 {
 //--------------------------------------------------------------------------------
 //@public members
@@ -29,9 +33,20 @@ class MapNavigator
     this.mapWidget = mapWidget;
   }
 
+  public bool apply(shared_ptr<NavigationTarget> target)
+  {
+    if (!target)
+      return false;
+
+    if (!target.hasLocation)
+      return true;
+
+    return zoomToPoint(target.latitude, target.longitude, target.altitude);
+  }
+
   public bool zoomToPoint(float latitude, float longitude, float altitude)
   {
-    mainMap.centerOn(latitude, longitude, altitude);
+    mapWidget.centerOn(latitude, longitude, altitude);
     return true;
   }
 

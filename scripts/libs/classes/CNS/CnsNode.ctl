@@ -29,6 +29,9 @@ class CnsNode
   public float lon;
   public float alt;
 
+  public string panelFile;
+  public dyn_string panelParameters;
+
   public dyn_anytype children;
   //------------------------------------------------------------------------------
   /** The Default Constructor.

@@ -8,7 +8,10 @@
 
 //--------------------------------------------------------------------------------
 // Libraries used (#uses)
-#uses "classes/navigation/NavigationRegistry"
+#uses "classes/navigation/NavigationCatalog"
+#uses "classes/navigation/NavigationGuard"
+#uses "classes/navigation/NavigationTarget"
+#uses "classes/navigation/NavigationView"
 
 
 //--------------------------------------------------------------------------------
@@ -23,6 +26,8 @@ enum NavigationResult
 
 //--------------------------------------------------------------------------------
 /**
+  Resolves a target, authorizes it, then applies it to every registered view.
+  Tree, map and panel are optional: a project only addView()s what it has.
 */
 class NavigationController
 {
@@ -33,40 +38,62 @@ class NavigationController
   //------------------------------------------------------------------------------
   /** The Default Constructor.
   */
-  public NavigationController(shared_ptr<NavigationRegistry> navigationRegistry)
+  public NavigationController(shared_ptr<NavigationCatalog> navigationCatalog)
   {
-    this.navigationRegistry = navigationRegistry;
+    this.navigationCatalog = navigationCatalog;
+    this.navigationGuard = new NavigationGuard();
   }
 
-  public NavigationResult navigate(string routeId)
+  public void setGuard(shared_ptr<NavigationGuard> navigationGuard)
   {
-    shared_ptr<NavigationRoute> navigationRoute = navigationRegistry.find(routeId);
-
-    if (!navigationRoute)
+    if (!navigationGuard)
     {
-      DebugN("Navigation route not found:", routeId);
-      return NAVIGATION_ROUTE_NOT_FOUND;
+      this.navigationGuard = new NavigationGuard();
+      return;
     }
 
-    /*if (!_access.canNavigate(routeId))
-    {
-      DebugN("Navigation access denied:", routeId);
-      return NAVIGATION_ACCESS_DENIED;
-    }*/
+    this.navigationGuard = navigationGuard;
+  }
 
-    if (!navigationRoute.execute())
+  public void addView(shared_ptr<NavigationView> navigationView)
+  {
+    if (!navigationView)
     {
-      DebugN("Navigation execution failed:", routeId);
+      DebugTN(__FILE__, __FUNCTION__, __LINE__, "Ignoring null navigation view");
+      return;
+    }
+
+    dynAppend(views, navigationView);
+  }
+
+  public NavigationResult navigate(string id)
+  {
+    if (!navigationCatalog)
+    {
+      DebugN("Navigation catalog is not set:", id);
       return NAVIGATION_EXECUTION_FAILED;
     }
 
-    currentRouteId = routeId;
-    return NAVIGATION_OK;
+    return applyTarget(navigationCatalog.resolve(id), id);
+  }
+
+  public NavigationResult navigateToTarget(shared_ptr<NavigationTarget> target)
+  {
+    string id;
+    if (target)
+      id = target.id;
+
+    return applyTarget(target, id);
   }
 
   public string getCurrentRouteId()
   {
-    return _currentRouteId;
+    return currentRouteId;
+  }
+
+  public shared_ptr<NavigationTarget> getCurrentTarget()
+  {
+    return currentTarget;
   }
 
 //--------------------------------------------------------------------------------
@@ -76,6 +103,45 @@ class NavigationController
 //--------------------------------------------------------------------------------
 //@private members
 //--------------------------------------------------------------------------------
-  private shared_ptr<NavigationRegistry> navigationRegistry;
+  private NavigationResult applyTarget(shared_ptr<NavigationTarget> target, string id)
+  {
+    if (!target)
+    {
+      DebugN("Navigation target not found:", id);
+      return NAVIGATION_ROUTE_NOT_FOUND;
+    }
+
+    if (!navigationGuard.canNavigate(target))
+    {
+      DebugN("Navigation access denied:", target.id);
+      return NAVIGATION_ACCESS_DENIED;
+    }
+
+    bool ok = true;
+
+    for (int i = 1; i <= dynlen(views); i++)
+    {
+      shared_ptr<NavigationView> view = views[i];
+
+      if (!view.apply(target))
+      {
+        DebugN("Navigation view failed:", target.id, i);
+        ok = false;
+      }
+    }
+
+    currentTarget = target;
+    currentRouteId = target.id;
+
+    if (!ok)
+      return NAVIGATION_EXECUTION_FAILED;
+
+    return NAVIGATION_OK;
+  }
+
+  private shared_ptr<NavigationCatalog> navigationCatalog;
+  private shared_ptr<NavigationGuard> navigationGuard;
+  private dyn_anytype views;
+  private shared_ptr<NavigationTarget> currentTarget;
   private string currentRouteId;
 };

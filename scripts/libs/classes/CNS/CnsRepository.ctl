@@ -96,11 +96,18 @@ class CnsRepository
         node.dp + ".Internal.lat", node.lat,
         node.dp + ".Internal.lon", node.lon
       );
+
+      if (dpExists(node.dp + ".Internal.alt"))
+        dpGet(node.dp + ".Internal.alt", node.alt);
     }
     else
     {
       node.hasLocation = false;
     }
+
+    string panelFile;
+    cnsGetProperty(cnsPath, "PanelFileName", panelFile);
+    node.panelFile = panelFile;
 
     // Recursively load children.
     dyn_string children;
@@ -198,14 +205,7 @@ class CnsRepository
       name = substr(name, 0, strlen(name) - 1);
     }
 
-    // Take everything after the last dot.
-    int dotPos = strpos(name, ".");
-
-    while (dotPos >= 0)
-    {
-      nodePart = substr(name, dotPos + 1);
-      dotPos = strpos(name, ".");
-    }
+    int dotPos = strrpos(name, ".");
 
     if (dotPos >= 0)
       return substr(name, dotPos + 1);
@@ -230,14 +230,7 @@ class CnsRepository
       return cnsPath;
 
     string nodePart = substr(cnsPath, colonPos + 1);
-
-    int dotPos = strpos(nodePart, ".");
-
-    while (dotPos >= 0)
-    {
-      nodePart = substr(nodePart, dotPos + 1);
-      dotPos = strpos(nodePart, ".");
-    }
+    int dotPos = strrpos(nodePart, ".");
 
     if (dotPos >= 0)
       return substr(nodePart, dotPos + 1);

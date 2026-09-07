@@ -8,57 +8,44 @@
 
 //--------------------------------------------------------------------------------
 // Libraries used (#uses)
-#uses "classes/navigation/NavigationTarget"
-#uses "classes/navigation/NavigationView"
-
 
 //--------------------------------------------------------------------------------
 // Variables and Constants
 
 //--------------------------------------------------------------------------------
 /**
-  Process-panel surface. Opens panelFile in the given embedded module.
-  Targets without a panel are a no-op.
+  Destination resolved by a catalog. Views use only the fields they understand.
+  Missing location or panel is a no-op for that view, not a failed navigation.
 */
-class PanelNavigator : NavigationView
+class NavigationTarget
 {
 //--------------------------------------------------------------------------------
 //@public members
 //--------------------------------------------------------------------------------
+  public string id;
+  public string label;
+  public string datapoint;
+
+  public bool hasLocation;
+  public float latitude;
+  public float longitude;
+  public float altitude;
+
+  public string panelFile;
+  public dyn_string panelParameters;
+
+  public mapping extras;
 
   //------------------------------------------------------------------------------
   /** The Default Constructor.
   */
-  public PanelNavigator(shape embeddedModule)
+  public NavigationTarget()
   {
-    this.embeddedModule = embeddedModule;
   }
 
-  public bool apply(shared_ptr<NavigationTarget> target)
+  public bool hasPanel()
   {
-    if (!target)
-      return false;
-
-    if (!target.hasPanel())
-      return true;
-
-    return showPanel(target.panelFile, target.panelParameters);
-  }
-
-  public bool showPanel(string panelFile, dyn_string parameters)
-  {
-    if (panelFile == "")
-      return true;
-
-    string moduleName = embeddedModule.ModuleName();
-    if (moduleName == "")
-    {
-      DebugTN(__FILE__, __FUNCTION__, __LINE__, "PanelNavigator has no module name");
-      return false;
-    }
-
-    int rc = RootPanelOnModule(panelFile, "", moduleName, parameters);
-    return rc == 0;
+    return panelFile != "";
   }
 
 //--------------------------------------------------------------------------------
@@ -68,5 +55,4 @@ class PanelNavigator : NavigationView
 //--------------------------------------------------------------------------------
 //@private members
 //--------------------------------------------------------------------------------
-  private shape embeddedModule;
 };

@@ -9,6 +9,7 @@
 //--------------------------------------------------------------------------------
 // Libraries used (#uses)
 #uses "classes/navigation/commands/NavigationCommand"
+#uses "classes/navigation/PanelNavigator"
 
 
 //--------------------------------------------------------------------------------
@@ -27,22 +28,21 @@ class NavigateToPanelCommand : NavigationCommand
   /** The Default Constructor.
   */
   public NavigateToPanelCommand(shared_ptr<PanelNavigator> panelNavigator,
-                                string contendId)
+                                string contentId)
   {
     this.panelNavigator = panelNavigator;
-    this.contentId = contendId;
+    this.contentId = contentId;
   }
 
   public bool execute()
   {
     if (!this.panelNavigator)
     {
-      DebugN("ShowContentCommand has no content navigator");
+      DebugN("NavigateToPanelCommand has no panel navigator");
       return false;
     }
 
-    return panelNavigator.showContent(contentId,
-                                      makeDynString());
+    return panelNavigator.showPanel(contentId, makeDynString());
   }
 
 //--------------------------------------------------------------------------------

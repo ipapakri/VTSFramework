@@ -8,7 +8,7 @@
 
 //--------------------------------------------------------------------------------
 // Libraries used (#uses)
-#uses "classes/navigation/NavigationRoute"
+#uses "classes/navigation/NavigationTarget"
 
 
 //--------------------------------------------------------------------------------
@@ -16,8 +16,10 @@
 
 //--------------------------------------------------------------------------------
 /**
+  Optional navigation surface (tree, map, panel, ...).
+  Register only the views the project has.
 */
-class NavigationRegistry
+class NavigationView
 {
 //--------------------------------------------------------------------------------
 //@public members
@@ -26,40 +28,18 @@ class NavigationRegistry
   //------------------------------------------------------------------------------
   /** The Default Constructor.
   */
-  public NavigationRegistry()
+  public NavigationView()
   {
   }
 
-  public bool add(shared_ptr<NavigationRoute> navigationRoute)
+  /**
+    Apply the target to this surface.
+    Return true on success or intentional no-op (e.g. no location on a map view).
+  */
+  public bool apply(shared_ptr<NavigationTarget> target)
   {
-    if(!navigationRoute)
-    {
-      DebugTN(__FILE__, __FUNCTION__, __LINE__, "Navigation route is null");
-      return false;
-    }
-
-    string routeId = navigationRoute.getRoureId();
-
-    if(mappingHasKey(navigationRoutes, routeId))
-    {
-      DebugTN(__FILE__, __FUNCTION__, __LINE__, "Duplicate navigation route: " + routeId);
-      return false;
-    }
-
-    navigationRoutes[routeId] = navigationRoute;
-    return true;
-  }
-
-  public shared_ptr<NavigationRoute> find(string routeId)
-  {
-    if(!mappingHasKey(navigationRoutes, routeId))
-    {
-      DebugTN(__FILE__, __FUNCTION__, __LINE__, "Route not in registry: " + routeId);
-      return nullptr;
-    }
-
-    shared_ptr<NavigationRoute> navigationRoute = navigationRoutes[routeId];
-    return navigationRoute;
+    throw(makeError("", PRIO_SEVERE, ERR_IMPL, 1, "Method apply is abstract in this context, \"NavigationView\""));
+    return false;
   }
 
 //--------------------------------------------------------------------------------
@@ -69,5 +49,4 @@ class NavigationRegistry
 //--------------------------------------------------------------------------------
 //@private members
 //--------------------------------------------------------------------------------
-  private mapping navigationRoutes;
 };

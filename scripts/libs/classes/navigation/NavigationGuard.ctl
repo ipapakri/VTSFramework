@@ -9,7 +9,6 @@
 //--------------------------------------------------------------------------------
 // Libraries used (#uses)
 #uses "classes/navigation/NavigationTarget"
-#uses "classes/navigation/NavigationView"
 
 
 //--------------------------------------------------------------------------------
@@ -17,10 +16,10 @@
 
 //--------------------------------------------------------------------------------
 /**
-  Process-panel surface. Opens panelFile in the given embedded module.
-  Targets without a panel are a no-op.
+  Access check before views are updated. Default implementation allows all.
+  Projects override canNavigate (e.g. AreaManager).
 */
-class PanelNavigator : NavigationView
+class NavigationGuard
 {
 //--------------------------------------------------------------------------------
 //@public members
@@ -29,36 +28,13 @@ class PanelNavigator : NavigationView
   //------------------------------------------------------------------------------
   /** The Default Constructor.
   */
-  public PanelNavigator(shape embeddedModule)
+  public NavigationGuard()
   {
-    this.embeddedModule = embeddedModule;
   }
 
-  public bool apply(shared_ptr<NavigationTarget> target)
+  public bool canNavigate(shared_ptr<NavigationTarget> target)
   {
-    if (!target)
-      return false;
-
-    if (!target.hasPanel())
-      return true;
-
-    return showPanel(target.panelFile, target.panelParameters);
-  }
-
-  public bool showPanel(string panelFile, dyn_string parameters)
-  {
-    if (panelFile == "")
-      return true;
-
-    string moduleName = embeddedModule.ModuleName();
-    if (moduleName == "")
-    {
-      DebugTN(__FILE__, __FUNCTION__, __LINE__, "PanelNavigator has no module name");
-      return false;
-    }
-
-    int rc = RootPanelOnModule(panelFile, "", moduleName, parameters);
-    return rc == 0;
+    return true;
   }
 
 //--------------------------------------------------------------------------------
@@ -68,5 +44,4 @@ class PanelNavigator : NavigationView
 //--------------------------------------------------------------------------------
 //@private members
 //--------------------------------------------------------------------------------
-  private shape embeddedModule;
 };
