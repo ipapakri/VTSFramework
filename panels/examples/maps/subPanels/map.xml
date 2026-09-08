@@ -23,31 +23,27 @@
   <prop name="layoutSpacing">0</prop>
  </properties>
  <events>
-  <script name="ScopeLib" isEscaped="1"><![CDATA[#uses &quot;classes/Map/MapNavigator.ctl&quot;
+  <script name="ScopeLib" isEscaped="1"><![CDATA[#uses &quot;classes/navigation/MapNavigator.ctl&quot;
 #uses &quot;classes/Map/MapObject.ctl&quot;
 
-MapNavigator mapNavigator;
+MapNavigator mapNavigator = nullptr;
+const string navigatorName = $NavigatorName;
 
 void initialize()
 {
+  mapNavigator = MapNavigator::instance(navigatorName);
+  DebugTN(__FILE__, __FUNCTION__, __LINE__, this);
+  mapNavigator.setMapWidget(this);
+  DebugTN(__FILE__, __FUNCTION__, __LINE__, mapNavigator.getMapWidget());
+  mapEWO.workOffline(false);
   addDatapoints();
 
-  mapNavigator.setMapShape(this);
-  mapEWO.workOffline(false);
-  /*if(isDollarDefined(&quot;$lat&quot;) &amp;&amp; isDollarDefined(&quot;$lon&quot;) &amp;&amp; isDollarDefined(&quot;$alt&quot;))
-  {
-    DebugTN(__FUNCTION__, __LINE__, $lat, $lon, $alt, (float)$lat, (float)$lon, 1500);
-    mapEWO.centerOn((float)$lat, (float)$lon, (float)$alt);
-  }
-  else
-  {
-    mapNavigator.goThere();
-  }*/
   mapNavigator.goThere();
 }
 
 void addDatapoints()
 {
+  DebugTN(__FILE__, __FUNCTION__, __LINE__, mapNavigator.getModuleName());
   dyn_string dpes = mapNavigator.getDPEnames();
 
   for (int i = 1; i &lt;= dynlen(dpes); ++i)
@@ -67,8 +63,11 @@ void addDatapoints()
       {
         methods = viewContent[3];
       }
-      addSymbol(self, panel, &quot;symb_&quot; + i + &quot;_&quot; + j, makeDynString(&quot;$DP:&quot; + dpes[i], &quot;$Number:1&quot;, &quot;$cnsPath:&quot; + mapObject.getCnsPath()), 10, 10, 0, 1, 1, &quot;mapEWO&quot;);
-      //invokeMethod(getShape(myModuleName(), myPanelName(), &quot;symb_&quot; + i + &quot;_&quot; + j), &quot;setIndicatorDirection&quot;, 1);
+      addSymbol(self, panel, &quot;symb_&quot; + i + &quot;_&quot; + j, makeDynString(&quot;$DP:&quot; + dpes[i],
+                                                                  &quot;$Number:1&quot;,
+                                                                  &quot;$cnsPath:&quot; + mapObject.getCnsPath(),
+                                                                  &quot;$NavigatorName:&quot; + navigatorName), 10, 10, 0, 1, 1, &quot;mapEWO&quot;);
+
       if(methods != &quot;&quot;)
       {
         shape s = getShape(myModuleName(), myPanelName(), &quot;symb_&quot; + i + &quot;_&quot; + j);

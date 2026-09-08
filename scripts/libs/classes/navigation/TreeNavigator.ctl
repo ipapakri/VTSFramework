@@ -40,7 +40,7 @@ class TreeNavigator : NavigationView
 
   public bool apply(shared_ptr<NavigationTarget> target)
   {
-    if (!target)
+    if (target == nullptr)
       return false;
 
     select(target.id);
@@ -49,6 +49,11 @@ class TreeNavigator : NavigationView
 
   public void select(string id)
   {
+    if (treeWidget.selectedItem() == id)
+    {
+      return;
+    }
+
     treeWidget.setSelectedItem(id, true);
   }
 
@@ -99,7 +104,7 @@ class TreeNavigator : NavigationView
 
   private void addNode(shared_ptr<CnsNode> node, string parentId = "")
   {
-    if (!node)
+    if (node == nullptr)
       return;
 
     treeWidget.appendItemNC(

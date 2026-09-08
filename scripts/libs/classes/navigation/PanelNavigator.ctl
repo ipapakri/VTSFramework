@@ -36,11 +36,13 @@ class PanelNavigator : NavigationView
 
   public bool apply(shared_ptr<NavigationTarget> target)
   {
-    if (!target)
+    if (target == nullptr)
       return false;
 
     if (!target.hasPanel())
       return true;
+
+    DebugTN(__FILE__, __FUNCTION__, __LINE__, target);
 
     return showPanel(target.panelFile, target.panelParameters);
   }
@@ -59,6 +61,11 @@ class PanelNavigator : NavigationView
 
     int rc = RootPanelOnModule(panelFile, "", moduleName, parameters);
     return rc == 0;
+  }
+
+  public shape getEmbeddedModule()
+  {
+    return this.embeddedModule;
   }
 
 //--------------------------------------------------------------------------------

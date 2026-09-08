@@ -42,20 +42,22 @@ class CnsCatalog : NavigationCatalog
     CnsRepository repository;
     shared_ptr<CnsNode> root = repository.loadView(viewPath);
 
-    if (!root)
+    if (root == nullptr)
       return nullptr;
 
     buildFromRoot(root);
     return root;
   }
 
-  public void buildFromRoot(shared_ptr<CnsNode> root)
+  private void buildFromRoot(shared_ptr<CnsNode> root)
   {
     targets = makeMapping();
     this.root = root;
 
-    if (root)
+    if(root != nullptr)
+    {
       indexNode(root);
+    }
   }
 
   public shared_ptr<CnsNode> getRoot()
@@ -82,9 +84,10 @@ class CnsCatalog : NavigationCatalog
 //--------------------------------------------------------------------------------
 //@private members
 //--------------------------------------------------------------------------------
+
   private void indexNode(shared_ptr<CnsNode> node)
   {
-    if (!node)
+    if (node == nullptr)
       return;
 
     if (node.cnsPath != "")

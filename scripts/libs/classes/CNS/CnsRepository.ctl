@@ -123,6 +123,8 @@ class CnsRepository
       }
     }
 
+    node.panelParameters = makeDynString("$DP:" + node.dp);
+
     return node;
   }
 

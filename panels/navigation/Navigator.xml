@@ -16,18 +16,61 @@
   <prop name="layoutType">None</prop>
  </properties>
  <events>
-  <script name="ScopeLib" isEscaped="1"><![CDATA[#uses &quot;classes/navigation/MapNavigator.ctl&quot;
-#uses &quot;classes/Map/MapObject.ctl&quot;
-#uses &quot;classes/navigation/NavigationController.ctl&quot;
-#uses &quot;classes/navigation/TreeNavigator.ctl&quot;
-#uses &quot;classes/navigation/PanelNavigator.ctl&quot;
-#uses &quot;classes/CNS/CnsRepository.ctl&quot;
-#uses &quot;classes/CNS/CnsNode.ctl&quot;
+  <script name="ScopeLib" isEscaped="1"><![CDATA[#uses &quot;classes/navigation/EYDAPCompositeNavigator&quot;
+#uses &quot;classes/navigation/NavigationController&quot;
+#uses &quot;classes/navigation/EYDAPTreeNavigator&quot;
+#uses &quot;classes/navigation/MapNavigator&quot;
+#uses &quot;classes/navigation/PanelNavigator&quot;
+#uses &quot;classes/navigation/catalog/CnsCatalog&quot;
+#uses &quot;classes/AreaManagement/AreaManager.ctl&quot;
 
-bool mapOpened = false;
-shared_ptr&lt;NavigationController&gt; navigationController;
+const string MAIN_MODULE_NAME = &quot;Main_Module&quot;;
+const string MAP_MODULE_NAME = &quot;Map_Module&quot;;
+const string VIEW_NAME = &quot;System1.WasteWaterPumpStations:PumpStations&quot;;
 
-]]></script>
+string rootId;
+string rootLabel;
+
+shared_ptr&lt;AreaManager&gt; areaManager;
+string connectedUser;
+
+shared_ptr&lt;NavigationController&gt; navigationController = nullptr;
+
+initialize()
+{
+  EMBEDDED_MODULE1.ModuleName(MAP_MODULE_NAME);
+  EMBEDDED_MODULE2.ModuleName(MAIN_MODULE_NAME);
+
+  shared_ptr&lt;CnsCatalog&gt; catalog = new CnsCatalog();
+  shared_ptr&lt;CnsNode&gt; root = catalog.loadView(VIEW_NAME);
+
+  navigationController = NavigationController::instance(myModuleName() + &quot;_&quot; + MAP_MODULE_NAME);
+  navigationController.setNavigationCatalog(catalog);
+  // navigationController.setGuard(yourAreaGuard);  // optional
+
+  shared_ptr&lt;EYDAPTreeNavigator&gt; treeView = new EYDAPTreeNavigator(
+    getShape(myModuleName(), myPanelName(), &quot;TREE1&quot;));
+  treeView.populate(root);
+  navigationController.addView(treeView);
+
+  // Omit this block for panel-only projects
+  shared_ptr&lt;MapNavigator&gt; mapView = MapNavigator::instance(myModuleName() + &quot;_&quot; + MAP_MODULE_NAME);
+  mapView.setMapModule(getShape(myModuleName(), myPanelName(), &quot;EMBEDDED_MODULE1&quot;));
+  mapView.populate(root);
+  //RootPanelOnModule(&quot;examples/maps/start.xml&quot;, &quot;&quot;, &quot;Map_Module&quot;, makeDynString());
+  RootPanelOnModule(&quot;examples/maps/subPanels/map.xml&quot;, &quot;&quot;, MAP_MODULE_NAME, makeDynString(&quot;$NavigatorName:&quot; + myModuleName() + &quot;_&quot; + MAP_MODULE_NAME));
+
+  // Omit this block for map-only projects
+  shared_ptr&lt;PanelNavigator&gt; panelView = new PanelNavigator(
+    getShape(myModuleName(), myPanelName(), &quot;EMBEDDED_MODULE2&quot;));
+
+  shared_ptr&lt;EYDAPCompositeNavigator&gt; eydapCompositeNavigator = new EYDAPCompositeNavigator(mapView, panelView);
+  navigationController.addView(eydapCompositeNavigator);
+  //navigationController.addView(mapView);
+  //navigationController.addView(panelView);
+
+  //navigationController.navigate(root.cnsPath);
+}]]></script>
   <script name="Initialize" isEscaped="1"><![CDATA[/**
  * Populate a WinCC OA Tree widget from a CNS view.
  *
@@ -38,321 +81,13 @@ shared_ptr&lt;NavigationController&gt; navigationController;
  *   &quot;.Sites:&quot;          Local system
  *   &quot;System1.Sites:&quot;   Explicit system
  */
-#uses &quot;classes/AreaManagement/AreaManager.ctl&quot;
-string rootId;
-string rootLabel;
 
-shared_ptr&lt;AreaManager&gt; areaManager;
-string connectedUser;
-
-uint nodeImagesMutex;
-
-mapping nodeImages;
 
 main()
 {
-  EMBEDDED_MODULE1.ModuleName(&quot;Map_Module&quot;);
-  EMBEDDED_MODULE2.ModuleName(&quot;Main_Module&quot;);
-
-  //populateTreeFromCnsView(&quot;System1.WasteWaterPumpStations:&quot;);
-  TREE1.showHeader(false);
-  TREE1.setSorting(0, TRUE);
-  TREE1.setSelectedItem(rootId);
-
-  CnsRepository repository;
-  shared_ptr&lt;CnsNode&gt; root = repository.loadView(&quot;System1.WasteWaterPumpStations:PumpStations&quot;);
-
-  shared_ptr&lt;TreeNavigator&gt; treeNavigator = new TreeNavigator(getShape(myModuleName(), myPanelName(), &quot;TREE1&quot;));
-  treeNavigator.populate(root);
-  shared_ptr&lt;MapNavigator&gt; mapNavigator = new MapNavigator(getShape(myModuleName(), myPanelName(), &quot;EMBEDDED_MODULE1&quot;));
-  //mapNavigator.setMapModule();
-  //mapNavigator.populate(root);
-  shared_ptr&lt;PanelNavigator&gt; panelNavigator = new PanelNavigator(getShape(myModuleName(), myPanelName(), &quot;EMBEDDED_MODULE2&quot;));
-
-  navigationController = new NavigationController();
-
-  /*navigator = Navigator::getInstance();
-  navigator.setTreeNavigator(treeNavigator);
-  navigator.setMapNavigator(mapNavigator);
-  navigator.setPanelNavigator(panelNavigator);
-  //navigator.setTreeWidget(getShape(myModuleName(), myPanelName(), &quot;TREE1&quot;));
-  /*areaManager = AreaManager::instance();
-  dpGet(myUiDpName()+&quot;.UserName&quot;, connectedUser);
-  process(&quot;&quot;);*/
-
-  navigationController.navigateTo(root.cnsPath);
+  initialize();
 }
-
-
-/**
- * Clears the widget and loads every CNS tree belonging to the view.
- */
-bool populateTreeFromCnsView(string viewPath)
-{
-  dyn_string cnsTrees;
-
-  TREE1.clear();
-
-  if (TREE1.columns == 0)
-  {
-    TREE1.addColumn(&quot;Name&quot;);
-  }
-
-  // Optional Tree widget configuration.
-  TREE1.rootIsDecorated = TRUE;
-  TREE1.itemsExpandable = TRUE;
-  TREE1.updatesEnabled = FALSE;
-
-  if (!normalizeCnsViewPath(viewPath))
-  {
-    DebugN(&quot;Invalid CNS view path:&quot;, viewPath);
-    TREE1.updatesEnabled = TRUE;
-    return FALSE;
-  }
-
-  // Use the view path as the Tree item ID.
-  rootId = viewPath;
-
-  // Remove the trailing ':' for display.
-  langString viewNames;
-  cnsGetViewDisplayNames(rootId, viewNames);
-  rootLabel = viewNames.text();
-
-  // Create the root item.
-  TREE1.appendItemNC(&quot;&quot;, rootId, rootLabel);
-
-  if (!cnsGetTrees(viewPath, cnsTrees))
-  {
-    DebugN(&quot;Could not read CNS view:&quot;, viewPath);
-    TREE1.updatesEnabled = TRUE;
-    return FALSE;
-  }
-
-  for (int i = 1; i &lt;= dynlen(cnsTrees); i++)
-  {
-    string treePath = cnsTrees[i];
-
-    // An empty parent ID creates a top-level Tree widget item.
-    if (!appendCnsNodeRecursive(rootId, treePath))
-    {
-      DebugN(&quot;Could not load CNS tree:&quot;, treePath);
-    }
-  }
-
-  TREE1.updatesEnabled = TRUE;
-
-  // Optional: open the first few levels.
-  TREE1.expandToDepth(2);
-  TREE1.adjustColumn(0);
-
-  return TRUE;
-}
-
-
-/**
- * Adds one CNS node and recursively adds all its children.
- *
- * parentItemId:
- *   Tree widget ID of the parent. Empty for top-level items.
- *
- * cnsPath:
- *   Full CNS identifier, for example:
- *   &quot;.Sites:Europe.Austria&quot;
- */
-bool appendCnsNodeRecursive(string parentItemId, string cnsPath)
-{
-  dyn_string children;
-  string label = getCnsNodeLabel(cnsPath);
-
-  TREE1.appendItemNC(parentItemId, cnsPath, label);
-  string dp;
-  cnsGetId(cnsPath, dp);
-  if(dp != &quot;&quot; &amp;&amp; dpExists(dp + &quot;.Internal.lat&quot;))
-  {
-    string lat, lon;
-    dpGet(dp + &quot;.Internal.lat&quot;, lat,
-          dp + &quot;.Internal.lon&quot;, lon);
-    mapNavigator.setMapObject(dp, new MapObject(lat, lon, dp, cnsPath));
-  }
-
-  if (cnsGetChildren(cnsPath, children))
-  {
-    for (int i = 1; i &lt;= dynlen(children); i++)
-    {
-      appendCnsNodeRecursive(cnsPath, children[i]);
-    }
-  }
-
-  return TRUE;
-}
-
-
-/**
- * Returns the display name in the currently active project language.
- * Falls back to the technical CNS node ID if no display name is available.
- */
-string getCnsNodeLabel(string cnsPath)
-{
-  langString displayNames;
-
-  if (cnsGetDisplayNames(cnsPath, displayNames))
-  {
-    string label = displayNames.text();
-
-    if (label != &quot;&quot;)
-      return label;
-  }
-
-  return getTechnicalNodeName(cnsPath);
-}
-
-
-/**
- * Extracts the final technical node name from a standard CNS ID path.
- *
- * Examples:
- *   &quot;.Sites:Europe&quot;                 -&gt; &quot;Europe&quot;
- *   &quot;.Sites:Europe.Austria.Vienna&quot; -&gt; &quot;Vienna&quot;
- *
- * This assumes the standard &quot;.&quot; node separator. If the CNS view uses
- * custom separators, use cnsGetViewSeparators() or cnsSubStr() instead.
- */
-string getTechnicalNodeName(string cnsPath)
-{
-  int colonPos;
-  int dotPos;
-  string nodePart;
-
-  colonPos = strpos(cnsPath, &quot;:&quot;);
-
-  if (colonPos &lt; 0)
-    return cnsPath;
-
-  nodePart = substr(cnsPath, colonPos + 1);
-
-  dotPos = strrpos(nodePart, &quot;.&quot;);
-
-  if (dotPos &gt;= 0)
-    return substr(nodePart, dotPos + 1);
-
-  return nodePart;
-}
-
-
-/**
- * Adds the trailing colon when only a view name/path was supplied.
- *
- * Accepted:
- *   &quot;.Sites&quot;
- *   &quot;.Sites:&quot;
- *   &quot;System1.Sites&quot;
- *   &quot;System1.Sites:&quot;
- */
-bool normalizeCnsViewPath(string &amp;viewPath)
-{
-  viewPath.trim();
-
-  if (viewPath == &quot;&quot;)
-    return FALSE;
-
-  if (substr(viewPath, strlen(viewPath) - 1, 1) != &quot;:&quot;)
-    viewPath += &quot;:&quot;;
-
-  return TRUE;
-}
-
-
-bool process(string node)
-{
-  // Leaf
-  dyn_string children =   TREE1.children(node);
-  if (dynlen(children) == 0)
-  {
-    string fileName;
-    cnsGetProperty(node, &quot;PanelFileName&quot;, fileName);
-    if (fileName == &quot;&quot;)
-    {
-      TREE1.setVisible(node, false);
-      return false;
-    }
-
-    string dp;
-    cnsGetId(node, dp);
-    strreplace(dp, getSystemName(), &quot;&quot;);
-
-    DebugTN(__FUNCTION__, __LINE__, node, dp);
-
-    if(areaManager.userHasPermission(connectedUser, dp, 0))
-    {
-      TREE1.setVisible(node, true);
-      connectAlarmNode(node);
-      return true;
-    }
-    else
-    {
-      TREE1.setVisible(node, false);
-      return false;
-    }
-  }
-
-  int visibleChildren = 0;
-
-  for (int j = 1; j &lt;=dynlen(children); j++)
-  {
-    if (process(children[j]))
-    {
-      visibleChildren++;
-    }
-  }
-
-  if (visibleChildren == 0)
-  {
-    TREE1.setVisible(node, false);
-    return false;
-  }
-
-
-  TREE1.setVisible(node, true);
-  //connectAlarmNode(node);
-  return true;
-}
-
-void connectAlarmNode(string node)
-{
-  string dp;
-  cnsGetId(node, dp);
-  dpConnectUserData( &quot;ShowConnectionCB&quot;, node,
-                       dp + &quot;.Internal.Comm&quot;);
-}
-
-void ShowConnectionCB(string node,
-                      string strDP1, bool value)
-{
-  synchronized(nodeImagesMutex)
-  {
-    if (value)
-    {
-      nodeImages[node] = &quot;themes/modern/StandardIcons/plc_disconnected_failure_20.png&quot;;
-    }
-    else
-    {
-      nodeImages[node] = &quot;themes/modern/StandardIcons/plc_connected_green_20.png&quot;;
-    }
-  }
-
-  updateImage(node);
-}
-
-void updateImage(string node)
-{
-  synchronized(nodeImagesMutex)
-  {
-    if(mappingHasKey(nodeImages, node))
-    {
-      TREE1.setIcon(node, 0, nodeImages[node]);
-    }
-  }
-}]]></script>
+]]></script>
  </events>
  <shapes>
   <shape Name="RECTANGLE8" shapeType="RECTANGLE" layerId="0">
@@ -438,7 +173,7 @@ void updateImage(string node)
     <extended>
      <script name="selectionChanged" isEscaped="1"><![CDATA[selectionChanged(string id)
 {
-  navigator.navigate(id);
+  navigationController.navigate(id);
 }]]></script>
     </extended>
    </properties>
@@ -669,6 +404,12 @@ STD_UserPopup();
      <prop type="CHAR_STRING" name="oldPanelAnimType">BottomRight</prop>
     </extended>
    </properties>
+   <events>
+    <script name="Initialize" isEscaped="1"><![CDATA[main()
+{
+  setScaleStyle(SCALE_FIT_TO_MODULE);
+}]]></script>
+   </events>
   </shape>
  </shapes>
 </panel>

@@ -35,18 +35,30 @@ class NavigationController
 //@public members
 //--------------------------------------------------------------------------------
 
-  //------------------------------------------------------------------------------
-  /** The Default Constructor.
-  */
-  public NavigationController(shared_ptr<NavigationCatalog> navigationCatalog)
+  public static shared_ptr<NavigationController> instance(string moduleName)
+  {
+    DebugTN(__FUNCTION__, __LINE__, moduleName);
+    if (moduleName == "")
+    {
+      return nullptr;
+    }
+
+    if(!mappingHasKey(instances, moduleName))
+    {
+      instances[moduleName] = new NavigationController();
+    }
+
+    return instances[moduleName];
+  }
+
+  public void setNavigationCatalog(shared_ptr<NavigationCatalog> navigationCatalog)
   {
     this.navigationCatalog = navigationCatalog;
-    this.navigationGuard = new NavigationGuard();
   }
 
   public void setGuard(shared_ptr<NavigationGuard> navigationGuard)
   {
-    if (!navigationGuard)
+    if (navigationGuard == nullptr)
     {
       this.navigationGuard = new NavigationGuard();
       return;
@@ -57,7 +69,7 @@ class NavigationController
 
   public void addView(shared_ptr<NavigationView> navigationView)
   {
-    if (!navigationView)
+    if (navigationView == nullptr)
     {
       DebugTN(__FILE__, __FUNCTION__, __LINE__, "Ignoring null navigation view");
       return;
@@ -68,10 +80,10 @@ class NavigationController
 
   public NavigationResult navigate(string id)
   {
-    if (!navigationCatalog)
+    if (navigationCatalog == nullptr)
     {
       DebugN("Navigation catalog is not set:", id);
-      return NAVIGATION_EXECUTION_FAILED;
+      return NavigationResult::NAVIGATION_EXECUTION_FAILED;
     }
 
     return applyTarget(navigationCatalog.resolve(id), id);
@@ -80,7 +92,7 @@ class NavigationController
   public NavigationResult navigateToTarget(shared_ptr<NavigationTarget> target)
   {
     string id;
-    if (target)
+    if (target != nullptr)
       id = target.id;
 
     return applyTarget(target, id);
@@ -103,18 +115,26 @@ class NavigationController
 //--------------------------------------------------------------------------------
 //@private members
 //--------------------------------------------------------------------------------
+  //------------------------------------------------------------------------------
+  /** The Default Constructor.
+  */
+  private NavigationController()
+  {
+    this.navigationGuard = new NavigationGuard();
+  }
+
   private NavigationResult applyTarget(shared_ptr<NavigationTarget> target, string id)
   {
-    if (!target)
+    if (target == nullptr)
     {
       DebugN("Navigation target not found:", id);
-      return NAVIGATION_ROUTE_NOT_FOUND;
+      return NavigationResult::NAVIGATION_ROUTE_NOT_FOUND;
     }
 
     if (!navigationGuard.canNavigate(target))
     {
       DebugN("Navigation access denied:", target.id);
-      return NAVIGATION_ACCESS_DENIED;
+      return NavigationResult::NAVIGATION_ACCESS_DENIED;
     }
 
     bool ok = true;
@@ -134,9 +154,9 @@ class NavigationController
     currentRouteId = target.id;
 
     if (!ok)
-      return NAVIGATION_EXECUTION_FAILED;
+      return NavigationResult::NAVIGATION_EXECUTION_FAILED;
 
-    return NAVIGATION_OK;
+    return NavigationResult::NAVIGATION_OK;
   }
 
   private shared_ptr<NavigationCatalog> navigationCatalog;
@@ -144,4 +164,6 @@ class NavigationController
   private dyn_anytype views;
   private shared_ptr<NavigationTarget> currentTarget;
   private string currentRouteId;
+
+  private static mapping instances;
 };
