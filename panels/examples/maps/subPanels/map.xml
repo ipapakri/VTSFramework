@@ -26,15 +26,13 @@
   <script name="ScopeLib" isEscaped="1"><![CDATA[#uses &quot;classes/navigation/MapNavigator.ctl&quot;
 #uses &quot;classes/Map/MapObject.ctl&quot;
 
-MapNavigator mapNavigator = nullptr;
+shared_ptr&lt;MapNavigator&gt; mapNavigator = nullptr;
 const string navigatorName = $NavigatorName;
 
 void initialize()
 {
   mapNavigator = MapNavigator::instance(navigatorName);
-  DebugTN(__FILE__, __FUNCTION__, __LINE__, this);
-  mapNavigator.setMapWidget(this);
-  DebugTN(__FILE__, __FUNCTION__, __LINE__, mapNavigator.getMapWidget());
+  mapNavigator.setMapWidget(getShape(myModuleName(), myPanelName(), &quot;mapEWO&quot;));
   mapEWO.workOffline(false);
   addDatapoints();
 
@@ -43,7 +41,6 @@ void initialize()
 
 void addDatapoints()
 {
-  DebugTN(__FILE__, __FUNCTION__, __LINE__, mapNavigator.getModuleName());
   dyn_string dpes = mapNavigator.getDPEnames();
 
   for (int i = 1; i &lt;= dynlen(dpes); ++i)

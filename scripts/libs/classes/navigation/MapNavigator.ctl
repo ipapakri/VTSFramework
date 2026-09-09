@@ -29,7 +29,6 @@ class MapNavigator : NavigationView
 
   public static shared_ptr<MapNavigator> instance(string moduleName)
   {
-    DebugTN(__FUNCTION__, __LINE__, moduleName);
     if (moduleName == "")
     {
       return nullptr;
@@ -238,7 +237,6 @@ class MapNavigator : NavigationView
 
   public void populate(shared_ptr<CnsNode> node)
   {
-    DebugTN(__FUNCTION__, __LINE__, node.label, node.hasLocation);
     if (node.hasLocation)
     {
       setMapObject(

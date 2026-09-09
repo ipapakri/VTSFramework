@@ -49,6 +49,8 @@ class TreeNavigator : NavigationView
 
   public void select(string id)
   {
+    DebugTN(getStackTrace());
+    DebugTN(__FILE__, __FUNCTION__, __LINE__, id, treeWidget.selectedItem());
     if (treeWidget.selectedItem() == id)
     {
       return;
@@ -65,6 +67,11 @@ class TreeNavigator : NavigationView
   public void setIcon(string id, string icon)
   {
     treeWidget.setIcon(id, 0, icon);
+  }
+
+  public void setBackColor(string id, string color)
+  {
+    treeWidget.setBackColor(id, 0, color);
   }
 
   public dyn_string children(string id)

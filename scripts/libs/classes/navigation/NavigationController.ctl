@@ -37,7 +37,6 @@ class NavigationController
 
   public static shared_ptr<NavigationController> instance(string moduleName)
   {
-    DebugTN(__FUNCTION__, __LINE__, moduleName);
     if (moduleName == "")
     {
       return nullptr;

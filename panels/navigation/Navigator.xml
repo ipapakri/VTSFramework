@@ -173,6 +173,7 @@ main()
     <extended>
      <script name="selectionChanged" isEscaped="1"><![CDATA[selectionChanged(string id)
 {
+  DebugTN(__FILE__, __FUNCTION__, __LINE__, id);
   navigationController.navigate(id);
 }]]></script>
     </extended>

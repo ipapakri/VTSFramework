@@ -59,8 +59,8 @@ class PanelNavigator : NavigationView
       return false;
     }
 
-    int rc = RootPanelOnModule(panelFile, "", moduleName, parameters);
-    return rc == 0;
+    RootPanelOnModule(panelFile, "", moduleName, parameters);
+    return true;
   }
 
   public shape getEmbeddedModule()

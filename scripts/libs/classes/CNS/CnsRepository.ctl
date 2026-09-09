@@ -30,8 +30,6 @@ class CnsRepository
 
   public shared_ptr<CnsNode> loadView(string viewPath)
   {
-    DebugTN(__FUNCTION__, __LINE__, viewPath);
-
     if (!normalizeCnsViewPath(viewPath))
     {
       DebugN("Invalid CNS view path:", viewPath);
@@ -84,31 +82,29 @@ class CnsRepository
 
     // Resolve the DP associated with the CNS node.
     cnsGetId(cnsPath, node.dp);
-
-    // Load map information when available.
-    if (node.dp != "" &&
-        dpExists(node.dp + ".Internal.lat") &&
-        dpExists(node.dp + ".Internal.lon"))
+    dyn_string keys;
+    cnsGetPropertyKeys(cnsPath, keys);
+    for(int i=1; i<=dynlen(keys); i++)
     {
-      node.hasLocation = true;
-
-      dpGet(
-        node.dp + ".Internal.lat", node.lat,
-        node.dp + ".Internal.lon", node.lon
-      );
-
-      if (dpExists(node.dp + ".Internal.alt"))
-        dpGet(node.dp + ".Internal.alt", node.alt);
-    }
-    else
-    {
-      node.hasLocation = false;
+      anytype value;
+      cnsGetProperty(cnsPath, keys[i], value);
     }
 
-    string panelFile;
-    cnsGetProperty(cnsPath, "PanelFileName", panelFile);
-    node.panelFile = panelFile;
+    if(dpExists(node.dp))
+    {
 
+      dpGet(node.dp + ".Internal.lat", node.lat,
+            node.dp + ".Internal.lon", node.lon,
+            node.dp + ".Internal.alt", node.alt,
+            node.dp + ".Internal.panelFileName", node.panelFile);
+
+      node.panelParameters = makeDynString("$DP:" + node.dp);
+
+      if(node.lat != "" && node.lon != "" && node.alt != "")
+      {
+        node.hasLocation = true;
+      }
+    }
     // Recursively load children.
     dyn_string children;
 
@@ -122,8 +118,6 @@ class CnsRepository
           dynAppend(node.children, child);
       }
     }
-
-    node.panelParameters = makeDynString("$DP:" + node.dp);
 
     return node;
   }
