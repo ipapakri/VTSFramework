@@ -79,10 +79,16 @@ class NavigationController
 
   public NavigationResult navigate(string id)
   {
+    DebugTN(__FILE__, __FUNCTION__, __LINE__, id);
     if (navigationCatalog == nullptr)
     {
       DebugN("Navigation catalog is not set:", id);
       return NavigationResult::NAVIGATION_EXECUTION_FAILED;
+    }
+
+    if(id == "")
+    {
+      id = navigationCatalog.getRoot();
     }
 
     return applyTarget(navigationCatalog.resolve(id), id);
@@ -92,7 +98,7 @@ class NavigationController
   {
     string id;
     if (target != nullptr)
-      id = target.id;
+      id = target.getId();
 
     return applyTarget(target, id);
   }
@@ -132,11 +138,14 @@ class NavigationController
 
     if (!navigationGuard.canNavigate(target))
     {
-      DebugN("Navigation access denied:", target.id);
+      DebugN("Navigation access denied:", target.getId());
       return NavigationResult::NAVIGATION_ACCESS_DENIED;
     }
 
     bool ok = true;
+
+    DebugTN("NAV-IN", "asked", id, "target.getId()", target.getId(),
+        "currentRoute", currentRouteId);
 
     for (int i = 1; i <= dynlen(views); i++)
     {
@@ -144,16 +153,18 @@ class NavigationController
 
       if (!view.apply(target))
       {
-        DebugN("Navigation view failed:", target.id, i);
+        DebugN("Navigation view failed:", target.getId(), i);
         ok = false;
       }
     }
 
-    currentTarget = target;
-    currentRouteId = target.id;
+    DebugTN("NAV-OUT", "target.getId()", target.getId(), "ok", ok);
 
     if (!ok)
       return NavigationResult::NAVIGATION_EXECUTION_FAILED;
+
+    currentTarget = target;
+    currentRouteId = target.getId();
 
     return NavigationResult::NAVIGATION_OK;
   }

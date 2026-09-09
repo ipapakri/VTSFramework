@@ -43,20 +43,26 @@ class TreeNavigator : NavigationView
     if (target == nullptr)
       return false;
 
-    select(target.id);
+    select(target.getId());
     return true;
   }
 
   public void select(string id)
   {
-    DebugTN(getStackTrace());
-    DebugTN(__FILE__, __FUNCTION__, __LINE__, id, treeWidget.selectedItem());
-    if (treeWidget.selectedItem() == id)
+    string before = treeWidget.selectedItem();
+    bool skip = (before == id);
+    DebugTN("TREE-SELECT", "want", id, "selectedBefore", before, "skip", skip);
+    if (skip)
+      return;
+    /*if (treeWidget.selectedItem() == id)
     {
       return;
-    }
+    }*/
 
-    treeWidget.setSelectedItem(id, true);
+    //treeWidget.setSelectedItem(id, true);
+
+    DebugTN("TREE-SELECT-AFTER", "want", id,
+          "selectedAfter", treeWidget.selectedItem());
   }
 
   public void setVisible(string id, bool visible)
@@ -116,16 +122,17 @@ class TreeNavigator : NavigationView
 
     treeWidget.appendItemNC(
       parentId,
-      node.cnsPath,
-      node.label
+      node.getCnsPath(),
+      node.getLabel()
     );
     onNodeAdded(node);
 
-    for (int i = 1; i <= dynlen(node.children); i++)
+    dyn_anytype nodeChildren = node.getChildren();
+    for (int i = 1; i <= dynlen(nodeChildren); i++)
     {
       addNode(
-        node.children[i],
-        node.cnsPath
+        nodeChildren[i],
+        node.getCnsPath()
       );
     }
   }

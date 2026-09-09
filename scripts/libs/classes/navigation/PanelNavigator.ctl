@@ -44,7 +44,7 @@ class PanelNavigator : NavigationView
 
     DebugTN(__FILE__, __FUNCTION__, __LINE__, target);
 
-    return showPanel(target.panelFile, target.panelParameters);
+    return showPanel(target.getPanelFile(), target.getPanelParameters());
   }
 
   public bool showPanel(string panelFile, dyn_string parameters)

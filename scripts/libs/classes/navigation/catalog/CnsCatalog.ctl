@@ -67,6 +67,16 @@ class CnsCatalog : NavigationCatalog
 
   public shared_ptr<NavigationTarget> resolve(string id)
   {
+    bool found = (id != "" && mappingHasKey(targets, id));
+    string targetId;
+    if (found)
+    {
+      shared_ptr<NavigationTarget> t = targets[id];
+      targetId = t.getId();
+    }
+    DebugTN("CATALOG", "asked", id, "found", found, "target.id", targetId, targets[id].getId(),
+            "mismatch", found && (targetId != id), targets[id]);
+
     if (id == "" || !mappingHasKey(targets, id))
     {
       DebugTN(__FILE__, __FUNCTION__, __LINE__, "Target not in catalog: " + id);
@@ -90,12 +100,13 @@ class CnsCatalog : NavigationCatalog
     if (node == nullptr)
       return;
 
-    if (node.cnsPath != "")
-      targets[node.cnsPath] = toTarget(node);
+    if (node.getCnsPath() != "")
+      targets[node.getCnsPath()] = toTarget(node);
 
-    for (int i = 1; i <= dynlen(node.children); i++)
+    dyn_anytype children = node.getChildren();
+    for (int i = 1; i <= dynlen(children); i++)
     {
-      indexNode(node.children[i]);
+      indexNode(children[i]);
     }
   }
 
@@ -103,15 +114,15 @@ class CnsCatalog : NavigationCatalog
   {
     shared_ptr<NavigationTarget> target = new NavigationTarget();
 
-    target.id = node.cnsPath;
-    target.label = node.label;
-    target.datapoint = node.dp;
-    target.hasLocation = node.hasLocation;
-    target.latitude = node.lat;
-    target.longitude = node.lon;
-    target.altitude = node.alt;
-    target.panelFile = node.panelFile;
-    target.panelParameters = node.panelParameters;
+    target.setId(node.getCnsPath());
+    target.setLabel(node.getLabel());
+    target.setDatapoint(node.getDp());
+    target.setHasLocation(node.getHasLocation());
+    target.setLatitude(node.getLat());
+    target.setLongitude(node.getLon());
+    target.setAltitude(node.getAlt());
+    target.setPanelFile(node.getPanelFile());
+    target.setPanelParameters(node.getPanelParameters());
 
     return target;
   }

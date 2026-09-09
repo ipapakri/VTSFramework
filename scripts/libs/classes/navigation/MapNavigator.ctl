@@ -237,22 +237,23 @@ class MapNavigator : NavigationView
 
   public void populate(shared_ptr<CnsNode> node)
   {
-    if (node.hasLocation)
+    if (node.getHasLocation())
     {
       setMapObject(
-        node.dp,
+        node.getDp(),
         new MapObject(
-          node.lat,
-          node.lon,
-          node.dp,
-          node.cnsPath
+          node.getLat(),
+          node.getLon(),
+          node.getDp(),
+          node.getCnsPath()
         )
       );
     }
 
-    for (int i = 1; i <= dynlen(node.children); i++)
+    dyn_anytype children = node.getChildren();
+    for (int i = 1; i <= dynlen(children); i++)
     {
-      populate(node.children[i]);
+      populate(children[i]);
     }
   }
 
@@ -261,10 +262,10 @@ class MapNavigator : NavigationView
     if (target == nullptr)
       return false;
 
-    if (!target.hasLocation)
+    if (!target.getHasLocation())
       return true;
 
-    return zoomToPoint(target.latitude, target.longitude, target.altitude);
+    return zoomToPoint(target.getLatitude(), target.getLongitude(), target.getAltitude());
   }
 
   public bool zoomToPoint(float latitude, float longitude, float altitude)

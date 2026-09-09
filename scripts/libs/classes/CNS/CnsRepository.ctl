@@ -47,15 +47,15 @@ class CnsRepository
     // The root is a synthetic node representing the CNS view itself.
     shared_ptr<CnsNode> root = new CnsNode();
 
-    root.cnsPath = viewPath;
-    root.label = getCnsViewLabel(viewPath);
+    root.setCnsPath(viewPath);
+    root.setLabel(getCnsViewLabel(viewPath));
 
     for (int i = 1; i <= dynlen(cnsTrees); i++)
     {
       shared_ptr<CnsNode> child = loadNode(cnsTrees[i]);
 
       if (child != nullptr)
-        dynAppend(root.children, child);
+        root.addChild(child);
     }
 
     return root;
@@ -77,32 +77,33 @@ class CnsRepository
   {
     shared_ptr<CnsNode> node = new CnsNode();
 
-    node.cnsPath = cnsPath;
-    node.label = getCnsNodeLabel(cnsPath);
+    node.setCnsPath(cnsPath);
+    node.setLabel(getCnsNodeLabel(cnsPath));
 
     // Resolve the DP associated with the CNS node.
-    cnsGetId(cnsPath, node.dp);
+    string dp;
+    cnsGetId(cnsPath, dp);
+    node.setDp(dp);
     dyn_string keys;
-    cnsGetPropertyKeys(cnsPath, keys);
-    for(int i=1; i<=dynlen(keys); i++)
-    {
-      anytype value;
-      cnsGetProperty(cnsPath, keys[i], value);
-    }
 
-    if(dpExists(node.dp))
+    if(dpExists(node.getDp()))
     {
 
-      dpGet(node.dp + ".Internal.lat", node.lat,
-            node.dp + ".Internal.lon", node.lon,
-            node.dp + ".Internal.alt", node.alt,
-            node.dp + ".Internal.panelFileName", node.panelFile);
+      string lat, lon, alt, panelFile;
+      dpGet(node.getDp() + ".Internal.lat", lat,
+            node.getDp() + ".Internal.lon", lon,
+            node.getDp() + ".Internal.alt", alt,
+            node.getDp() + ".Internal.panelFileName", panelFile);
 
-      node.panelParameters = makeDynString("$DP:" + node.dp);
+      node.setLat(lat);
+      node.setLon(lon);
+      node.setAlt(alt);
+      node.setPanelFile(panelFile);
+      node.setPanelParameters(makeDynString("$DP:" + node.getDp()));
 
-      if(node.lat != "" && node.lon != "" && node.alt != "")
+      if(node.getLat() != "" && node.getLon() != "" && node.getAlt() != "")
       {
-        node.hasLocation = true;
+        node.setHasLocation(true);
       }
     }
     // Recursively load children.
@@ -115,9 +116,11 @@ class CnsRepository
         shared_ptr<CnsNode> child = loadNode(children[i]);
 
         if (child != nullptr)
-          dynAppend(node.children, child);
+          node.addChild(child);
       }
     }
+
+
 
     return node;
   }
