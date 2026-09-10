@@ -39,9 +39,6 @@ shared_ptr&lt;EYDAPTreeNavigator&gt; treeView = nullptr;
 
 initialize()
 {
-  EMBEDDED_MODULE1.ModuleName(MAP_MODULE_NAME);
-  EMBEDDED_MODULE2.ModuleName(MAIN_MODULE_NAME);
-
   // This panel's module names the navigation scope; the embedded modules are
   // attached to it so anything running inside them can find this navigator
   // with NavigationScope::current().
