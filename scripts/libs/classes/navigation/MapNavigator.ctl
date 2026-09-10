@@ -93,6 +93,8 @@ class MapNavigator : NavigationView
   */
   public void goThere(const string coordinates = "")
   {
+    while(!this.getReady())
+    {delay(0, 500);}
     shape mapShape = mapWidget;
     DebugTN(__FUNCTION__, __LINE__, mapShape, getHomeCoordinates());
     if ( !mapShape )
@@ -265,12 +267,14 @@ class MapNavigator : NavigationView
     if (!target.getHasLocation())
       return true;
 
+    while(!this.getReady())
+    {}
+
     return zoomToPoint(target.getLatitude(), target.getLongitude(), target.getAltitude());
   }
 
   public bool zoomToPoint(float latitude, float longitude, float altitude)
   {
-    DebugTN(__FILE__, __FUNCTION__, __LINE__, this.moduleName);
     mapWidget.centerOn(latitude, longitude, altitude);
     return true;
   }

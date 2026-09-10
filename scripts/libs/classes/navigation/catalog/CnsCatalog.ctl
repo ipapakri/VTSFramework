@@ -74,8 +74,6 @@ class CnsCatalog : NavigationCatalog
       shared_ptr<NavigationTarget> t = targets[id];
       targetId = t.getId();
     }
-    DebugTN("CATALOG", "asked", id, "found", found, "target.id", targetId, targets[id].getId(),
-            "mismatch", found && (targetId != id), targets[id]);
 
     if (id == "" || !mappingHasKey(targets, id))
     {

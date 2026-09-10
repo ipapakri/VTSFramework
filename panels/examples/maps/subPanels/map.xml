@@ -35,8 +35,6 @@ void initialize()
   mapNavigator.setMapWidget(getShape(myModuleName(), myPanelName(), &quot;mapEWO&quot;));
   mapEWO.workOffline(false);
   addDatapoints();
-
-  //mapNavigator.goThere();
 }
 
 void addDatapoints()
@@ -89,6 +87,9 @@ void addDatapoints()
       mapEWO.addSymbol(&quot;symb_&quot; + i + &quot;_&quot; + j, mapObject.getCoordinates(), m);
     }
   }
+
+  mapNavigator.setReady(true);
+  DebugTN(__FILE__, __FUNCTION__, __LINE__);
 }]]></script>
  </events>
  <shapes>

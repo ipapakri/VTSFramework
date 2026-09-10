@@ -42,6 +42,16 @@ class NavigationView
     return false;
   }
 
+  public bool getReady()
+  {
+    return this.ready;
+  }
+
+  public void setReady(bool ready)
+  {
+    this.ready = ready;
+  }
+
 //--------------------------------------------------------------------------------
 //@protected members
 //--------------------------------------------------------------------------------
@@ -49,4 +59,5 @@ class NavigationView
 //--------------------------------------------------------------------------------
 //@private members
 //--------------------------------------------------------------------------------
+  private bool ready;
 };

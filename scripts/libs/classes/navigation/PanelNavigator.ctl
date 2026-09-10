@@ -32,6 +32,7 @@ class PanelNavigator : NavigationView
   public PanelNavigator(shape embeddedModule)
   {
     this.embeddedModule = embeddedModule;
+    this.setReady(true);
   }
 
   public bool apply(shared_ptr<NavigationTarget> target)
@@ -41,8 +42,6 @@ class PanelNavigator : NavigationView
 
     if (!target.hasPanel())
       return true;
-
-    DebugTN(__FILE__, __FUNCTION__, __LINE__, target);
 
     return showPanel(target.getPanelFile(), target.getPanelParameters());
   }

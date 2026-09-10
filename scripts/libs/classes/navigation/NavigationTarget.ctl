@@ -37,7 +37,6 @@ class NavigationTarget
 
   public void setId(string id)
   {
-    DebugTN(__FUNCTION__, __LINE__, id);
     this.id = id;
   }
 

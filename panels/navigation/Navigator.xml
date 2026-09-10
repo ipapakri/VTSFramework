@@ -36,8 +36,6 @@ string connectedUser;
 
 shared_ptr&lt;NavigationController&gt; navigationController = nullptr;
 
-int gNavDepth;
-
 initialize()
 {
   EMBEDDED_MODULE1.ModuleName(MAP_MODULE_NAME);
@@ -59,7 +57,6 @@ initialize()
   shared_ptr&lt;MapNavigator&gt; mapView = MapNavigator::instance(myModuleName() + &quot;_&quot; + MAP_MODULE_NAME);
   mapView.setMapModule(getShape(myModuleName(), myPanelName(), &quot;EMBEDDED_MODULE1&quot;));
   mapView.populate(root);
-  //RootPanelOnModule(&quot;examples/maps/start.xml&quot;, &quot;&quot;, &quot;Map_Module&quot;, makeDynString());
   RootPanelOnModule(&quot;examples/maps/subPanels/map.xml&quot;, &quot;&quot;, MAP_MODULE_NAME, makeDynString(&quot;$NavigatorName:&quot; + myModuleName() + &quot;_&quot; + MAP_MODULE_NAME));
 
   // Omit this block for map-only projects
@@ -71,7 +68,7 @@ initialize()
   //navigationController.addView(mapView);
   //navigationController.addView(panelView);
 
-  //navigationController.navigate(root.getCnsPath()));
+  navigationController.navigate(root.getCnsPath());
 }]]></script>
   <script name="Initialize" isEscaped="1"><![CDATA[/**
  * Populate a WinCC OA Tree widget from a CNS view.
@@ -175,18 +172,7 @@ main()
     <extended>
      <script name="selectionChanged" isEscaped="1"><![CDATA[selectionChanged(string id)
 {
-  string selected = TREE1.selectedItem();
-  string current = TREE1.currentItem();  // if the script editor rejects it, drop this line
-  DebugTN(&quot;EVT&quot;, gNavDepth, &quot;event&quot;, id,
-          &quot;selectedItem&quot;, selected,
-          &quot;currentItem&quot;, current,
-          &quot;route&quot;, navigationController.getCurrentRouteId(),
-          &quot;sameAsSelected&quot;, id == selected,
-          &quot;empty&quot;, id == &quot;&quot;);
-
-  gNavDepth++;
   navigationController.navigate(id);
-  gNavDepth--;
 }]]></script>
     </extended>
    </properties>

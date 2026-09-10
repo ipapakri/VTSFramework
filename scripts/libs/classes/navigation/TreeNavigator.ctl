@@ -49,20 +49,12 @@ class TreeNavigator : NavigationView
 
   public void select(string id)
   {
-    string before = treeWidget.selectedItem();
-    bool skip = (before == id);
-    DebugTN("TREE-SELECT", "want", id, "selectedBefore", before, "skip", skip);
-    if (skip)
-      return;
-    /*if (treeWidget.selectedItem() == id)
+    if (treeWidget.selectedItem() == id)
     {
       return;
-    }*/
+    }
 
-    //treeWidget.setSelectedItem(id, true);
-
-    DebugTN("TREE-SELECT-AFTER", "want", id,
-          "selectedAfter", treeWidget.selectedItem());
+    treeWidget.setSelectedItem(id, true);
   }
 
   public void setVisible(string id, bool visible)

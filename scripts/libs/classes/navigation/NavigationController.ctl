@@ -79,7 +79,6 @@ class NavigationController
 
   public NavigationResult navigate(string id)
   {
-    DebugTN(__FILE__, __FUNCTION__, __LINE__, id);
     if (navigationCatalog == nullptr)
     {
       DebugN("Navigation catalog is not set:", id);
@@ -144,9 +143,6 @@ class NavigationController
 
     bool ok = true;
 
-    DebugTN("NAV-IN", "asked", id, "target.getId()", target.getId(),
-        "currentRoute", currentRouteId);
-
     for (int i = 1; i <= dynlen(views); i++)
     {
       shared_ptr<NavigationView> view = views[i];
@@ -158,12 +154,10 @@ class NavigationController
       }
     }
 
-    DebugTN("NAV-OUT", "target.getId()", target.getId(), "ok", ok);
-
     if (!ok)
       return NavigationResult::NAVIGATION_EXECUTION_FAILED;
 
-    currentTarget = target;
+    assignPtr(currentTarget, target);
     currentRouteId = target.getId();
 
     return NavigationResult::NAVIGATION_OK;
