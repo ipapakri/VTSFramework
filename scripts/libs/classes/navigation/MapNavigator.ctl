@@ -10,6 +10,7 @@
 // Libraries used (#uses)
 #uses "classes/Map/MapObject"
 #uses "classes/navigation/NavigationCatalog"
+#uses "classes/navigation/NavigationScope"
 #uses "classes/navigation/NavigationTarget"
 #uses "classes/navigation/NavigationView"
 
@@ -27,31 +28,56 @@ class MapNavigator : NavigationView
 //@public members
 //--------------------------------------------------------------------------------
 
-  public static shared_ptr<MapNavigator> instance(string moduleName)
+  /**
+    @brief The map navigator of a navigation scope, created on first call.
+    @details Use from the panel that owns the navigator. The map sub-panel
+    should use find() instead, so that a wrong scope surfaces as nullptr
+    rather than as a second navigator nobody ever applies a target to.
+  */
+  public static shared_ptr<MapNavigator> instance(string scopeId)
   {
-    if (moduleName == "")
+    if (scopeId == "")
     {
       return nullptr;
     }
 
-    if(!mappingHasKey(instances, moduleName))
+    if(!mappingHasKey(instances, scopeId))
     {
-      instances[moduleName] = new MapNavigator(moduleName);
+      instances[scopeId] = new MapNavigator(scopeId);
     }
 
-    return instances[moduleName];
+    return instances[scopeId];
   }
 
   /**
-    @brief Drops the navigator registered for moduleName.
+    @brief The map navigator of scopeId, or nullptr if there is none.
+  */
+  public static shared_ptr<MapNavigator> find(string scopeId)
+  {
+    if (mappingHasKey(instances, scopeId))
+      return instances[scopeId];
+
+    return nullptr;
+  }
+
+  /**
+    @brief The map navigator driving the module the caller runs in.
+  */
+  public static shared_ptr<MapNavigator> forCurrentModule()
+  {
+    return find(NavigationScope::current());
+  }
+
+  /**
+    @brief Drops the navigator registered for scopeId.
     @details Call from the owning panel's Terminate: the navigator holds shape
     handles that die with the panel.
   */
-  public static void release(string moduleName)
+  public static void release(string scopeId)
   {
-    if (mappingHasKey(instances, moduleName))
+    if (mappingHasKey(instances, scopeId))
     {
-      mappingRemove(instances, moduleName);
+      mappingRemove(instances, scopeId);
     }
   }
 
@@ -310,9 +336,20 @@ class MapNavigator : NavigationView
     return true;
   }
 
+  /**
+    @brief The navigation scope this map navigator belongs to.
+  */
+  public string getScopeId()
+  {
+    return this.scopeId;
+  }
+
+  /**
+    @brief Kept for callers written before scopes existed. Same as getScopeId().
+  */
   public string getModuleName()
   {
-    return this.moduleName;
+    return this.scopeId;
   }
 
 //--------------------------------------------------------------------------------
@@ -434,9 +471,9 @@ class MapNavigator : NavigationView
     return result;
   }
 
-  private MapNavigator(string moduleName)
+  private MapNavigator(string scopeId)
   {
-    this.moduleName = moduleName;
+    this.scopeId = scopeId;
   }
 
   private shape mapWidget;
@@ -450,7 +487,7 @@ class MapNavigator : NavigationView
   private string homeCoord = "37.981, 23.545";
   private int homeZoom = 25000;
 
-  private string moduleName;
+  private string scopeId;
 
   private static mapping instances;
   private static string mapsRootDir = "marble/maps/";

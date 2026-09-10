@@ -21,11 +21,10 @@
 #uses &quot;classes/navigation/EYDAPTreeNavigator&quot;
 #uses &quot;classes/navigation/MapNavigator&quot;
 #uses &quot;classes/navigation/PanelNavigator&quot;
+#uses &quot;classes/navigation/NavigationScope&quot;
 #uses &quot;classes/navigation/catalog/CnsCatalog&quot;
 #uses &quot;classes/AreaManagement/AreaManager.ctl&quot;
 
-const string MAIN_MODULE_NAME = &quot;Main_Module&quot;;
-const string MAP_MODULE_NAME = &quot;Map_Module&quot;;
 const string VIEW_NAME = &quot;System1.WasteWaterPumpStations:PumpStations&quot;;
 
 string rootId;
@@ -34,7 +33,7 @@ string rootLabel;
 shared_ptr&lt;AreaManager&gt; areaManager;
 string connectedUser;
 
-string navigatorKey;
+string navigatorScope;
 shared_ptr&lt;NavigationController&gt; navigationController = nullptr;
 shared_ptr&lt;EYDAPTreeNavigator&gt; treeView = nullptr;
 
@@ -43,7 +42,19 @@ initialize()
   EMBEDDED_MODULE1.ModuleName(MAP_MODULE_NAME);
   EMBEDDED_MODULE2.ModuleName(MAIN_MODULE_NAME);
 
-  navigatorKey = myModuleName() + &quot;_&quot; + MAP_MODULE_NAME;
+  // This panel's module names the navigation scope; the embedded modules are
+  // attached to it so anything running inside them can find this navigator
+  // with NavigationScope::current().
+  navigatorScope = myModuleName();
+
+  string mapModuleName  = navigatorScope + "_Map";
+  string mainModuleName = navigatorScope + "_Main";
+
+  EMBEDDED_MODULE1.ModuleName(mapModuleName);
+  EMBEDDED_MODULE2.ModuleName(mainModuleName);
+
+  NavigationScope::attachModule(navigatorScope, mapModuleName);
+  NavigationScope::attachModule(navigatorScope, mainModuleName);
 
   shared_ptr&lt;CnsCatalog&gt; catalog = new CnsCatalog();
 
@@ -53,7 +64,7 @@ initialize()
     return;
   }
 
-  navigationController = NavigationController::instance(navigatorKey);
+  navigationController = NavigationController::instance(navigatorScope);
   navigationController.setNavigationCatalog(catalog);
   // navigationController.setGuard(yourAreaGuard);  // optional
 
@@ -63,10 +74,10 @@ initialize()
   navigationController.addView(treeView);
 
   // Omit this block for panel-only projects
-  shared_ptr&lt;MapNavigator&gt; mapView = MapNavigator::instance(navigatorKey);
+  shared_ptr&lt;MapNavigator&gt; mapView = MapNavigator::instance(navigatorScope);
   mapView.setMapModule(getShape(myModuleName(), myPanelName(), &quot;EMBEDDED_MODULE1&quot;));
   mapView.populate(catalog);
-  RootPanelOnModule(&quot;examples/maps/subPanels/map.xml&quot;, &quot;&quot;, MAP_MODULE_NAME, makeDynString(&quot;$NavigatorName:&quot; + navigatorKey));
+  RootPanelOnModule(&quot;examples/maps/subPanels/map.xml&quot;, &quot;&quot;, MAP_MODULE_NAME);
 
   // Omit this block for map-only projects
   shared_ptr&lt;PanelNavigator&gt; panelView = new PanelNavigator(
@@ -83,8 +94,9 @@ initialize()
 
 cleanup()
 {
-  NavigationController::release(navigatorKey);
-  MapNavigator::release(navigatorKey);
+  NavigationController::release(navigatorScope);
+  MapNavigator::release(navigatorScope);
+  NavigationScope::release(navigatorScope);
 }]]></script>
   <script name="Initialize" isEscaped="1"><![CDATA[/**
  * Populate a WinCC OA Tree widget from a CNS view.

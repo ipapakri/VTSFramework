@@ -24,14 +24,25 @@
  </properties>
  <events>
   <script name="ScopeLib" isEscaped="1"><![CDATA[#uses &quot;classes/navigation/MapNavigator.ctl&quot;
+#uses &quot;classes/navigation/NavigationScope.ctl&quot;
 #uses &quot;classes/Map/MapObject.ctl&quot;
 
 shared_ptr&lt;MapNavigator&gt; mapNavigator = nullptr;
-const string navigatorName = $NavigatorName;
+string navigatorScope;
 
 void initialize()
 {
-  mapNavigator = MapNavigator::instance(navigatorName);
+  // This panel runs in a module the navigator attached to its scope, so it
+  // can find its navigator without being told which one it belongs to.
+  navigatorScope = NavigationScope::current();
+  mapNavigator = MapNavigator::find(navigatorScope);
+
+  if (mapNavigator == nullptr)
+  {
+    DebugTN(__FUNCTION__, __LINE__, &quot;No map navigator for scope:&quot;, navigatorScope);
+    return;
+  }
+
   mapNavigator.setMapWidget(getShape(myModuleName(), myPanelName(), &quot;mapEWO&quot;));
   mapEWO.workOffline(false);
   addDatapoints();
@@ -65,7 +76,7 @@ void addDatapoints()
       addSymbol(self, panel, &quot;symb_&quot; + i + &quot;_&quot; + j, makeDynString(&quot;$DP:&quot; + dpes[i],
                                                                   &quot;$Number:1&quot;,
                                                                   &quot;$cnsPath:&quot; + mapObject.getCnsPath(),
-                                                                  &quot;$NavigatorName:&quot; + navigatorName), 10, 10, 0, 1, 1, &quot;mapEWO&quot;);
+                                                                  &quot;$NavigatorName:&quot; + navigatorScope), 10, 10, 0, 1, 1, &quot;mapEWO&quot;);
 
       if(methods != &quot;&quot;)
       {

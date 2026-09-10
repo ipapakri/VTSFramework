@@ -11,6 +11,7 @@
 #uses "classes/navigation/NavigationCatalog"
 #uses "classes/navigation/NavigationGuard"
 #uses "classes/navigation/NavigationListener"
+#uses "classes/navigation/NavigationScope"
 #uses "classes/navigation/NavigationTarget"
 #uses "classes/navigation/NavigationView"
 
@@ -48,30 +49,61 @@ class NavigationController
 //@public members
 //--------------------------------------------------------------------------------
 
-  public static shared_ptr<NavigationController> instance(string moduleName)
+  /**
+    The controller owning scopeId, created on first call. Use from the panel
+    that owns the navigator; consumers should use find() so that a wrong scope
+    surfaces as nullptr instead of an empty controller that silently does
+    nothing.
+  */
+  public static shared_ptr<NavigationController> instance(string scopeId)
   {
-    if (moduleName == "")
+    if (scopeId == "")
     {
       return nullptr;
     }
 
-    if(!mappingHasKey(instances, moduleName))
+    if(!mappingHasKey(instances, scopeId))
     {
-      instances[moduleName] = new NavigationController();
+      instances[scopeId] = new NavigationController();
     }
 
-    return instances[moduleName];
+    return instances[scopeId];
   }
 
   /**
-    Drops the controller registered for moduleName. Call from the navigator
+    The controller owning scopeId, or nullptr if there is none.
+  */
+  public static shared_ptr<NavigationController> find(string scopeId)
+  {
+    if (mappingHasKey(instances, scopeId))
+      return instances[scopeId];
+
+    return nullptr;
+  }
+
+  /**
+    The controller driving the module the calling script runs in. This is the
+    entry point for any component that just wants to navigate:
+
+      shared_ptr<NavigationController> controller = NavigationController::forCurrentModule();
+
+      if (controller != nullptr)
+        controller.navigate(cnsPath);
+  */
+  public static shared_ptr<NavigationController> forCurrentModule()
+  {
+    return find(NavigationScope::current());
+  }
+
+  /**
+    Drops the controller registered for scopeId. Call from the navigator
     panel's Terminate: the views hold shape handles that die with the panel.
   */
-  public static void release(string moduleName)
+  public static void release(string scopeId)
   {
-    if (mappingHasKey(instances, moduleName))
+    if (mappingHasKey(instances, scopeId))
     {
-      mappingRemove(instances, moduleName);
+      mappingRemove(instances, scopeId);
     }
   }
 
