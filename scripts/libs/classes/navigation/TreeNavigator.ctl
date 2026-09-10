@@ -107,6 +107,9 @@ class TreeNavigator : NavigationView
     if (rootId == "")
       rootId = catalog.getRootId();
 
+    this.catalog = catalog;   // new
+    this.rootId  = rootId;    // new
+
     treeWidget.showHeader(false);
     treeWidget.setSorting(0, TRUE);
     addNode(catalog, rootId, "");
@@ -125,6 +128,9 @@ class TreeNavigator : NavigationView
   protected void onNodeAdded(shared_ptr<NavigationTarget> target)
   {
   }
+
+  protected shared_ptr<NavigationCatalog> catalog;
+  protected string rootId;
 
 //--------------------------------------------------------------------------------
 //@private members

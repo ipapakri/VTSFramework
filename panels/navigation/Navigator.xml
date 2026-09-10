@@ -16,7 +16,8 @@
   <prop name="layoutType">None</prop>
  </properties>
  <events>
-  <script name="ScopeLib" isEscaped="1"><![CDATA[#uses &quot;classes/navigation/EYDAPCompositeNavigator&quot;
+  <script name="ScopeLib" isEscaped="1"><![CDATA[#uses &quot;classes/navigation/EYDAPAreaGuard&quot;
+#uses &quot;classes/navigation/EYDAPCompositeNavigator&quot;
 #uses &quot;classes/navigation/NavigationController&quot;
 #uses &quot;classes/navigation/EYDAPTreeNavigator&quot;
 #uses &quot;classes/navigation/MapNavigator&quot;
@@ -39,13 +40,14 @@ shared_ptr&lt;EYDAPTreeNavigator&gt; treeView = nullptr;
 
 initialize()
 {
+  areaManager = AreaManager::instance();
   // This panel's module names the navigation scope; the embedded modules are
   // attached to it so anything running inside them can find this navigator
   // with NavigationScope::current().
   navigatorScope = myModuleName();
 
-  string mapModuleName  = navigatorScope + "_Map";
-  string mainModuleName = navigatorScope + "_Main";
+  string mapModuleName  = navigatorScope + &quot;_Map&quot;;
+  string mainModuleName = navigatorScope + &quot;_Main&quot;;
 
   EMBEDDED_MODULE1.ModuleName(mapModuleName);
   EMBEDDED_MODULE2.ModuleName(mainModuleName);
@@ -61,20 +63,24 @@ initialize()
     return;
   }
 
+  dpGet(myUiDpName()+&quot;.UserName&quot;, connectedUser);
   navigationController = NavigationController::instance(navigatorScope);
   navigationController.setNavigationCatalog(catalog);
+  shared_ptr&lt;EYDAPAreaGuard&gt; guard = new EYDAPAreaGuard(areaManager, connectedUser);
+  navigationController.setGuard(guard);
   // navigationController.setGuard(yourAreaGuard);  // optional
 
   treeView = new EYDAPTreeNavigator(
     getShape(myModuleName(), myPanelName(), &quot;TREE1&quot;));
   treeView.populate(catalog);
+  treeView.applyGuard(guard);
   navigationController.addView(treeView);
 
   // Omit this block for panel-only projects
   shared_ptr&lt;MapNavigator&gt; mapView = MapNavigator::instance(navigatorScope);
   mapView.setMapModule(getShape(myModuleName(), myPanelName(), &quot;EMBEDDED_MODULE1&quot;));
   mapView.populate(catalog);
-  RootPanelOnModule(&quot;examples/maps/subPanels/map.xml&quot;, &quot;&quot;, MAP_MODULE_NAME);
+  RootPanelOnModule(&quot;examples/maps/subPanels/map.xml&quot;, &quot;&quot;, mapModuleName, makeDynString());
 
   // Omit this block for map-only projects
   shared_ptr&lt;PanelNavigator&gt; panelView = new PanelNavigator(
@@ -82,8 +88,6 @@ initialize()
 
   shared_ptr&lt;EYDAPCompositeNavigator&gt; eydapCompositeNavigator = new EYDAPCompositeNavigator(mapView, panelView);
   navigationController.addView(eydapCompositeNavigator);
-  //navigationController.addView(mapView);
-  //navigationController.addView(panelView);
 
   // An empty id resolves to the catalog root.
   navigationController.navigate(&quot;&quot;);
@@ -95,6 +99,11 @@ cleanup()
   MapNavigator::release(navigatorScope);
   NavigationScope::release(navigatorScope);
 }]]></script>
+  <script name="Terminate" isEscaped="1"><![CDATA[main()
+{
+  cleanup();
+}
+]]></script>
   <script name="Initialize" isEscaped="1"><![CDATA[/**
  * Populate a WinCC OA Tree widget from a CNS view.
  *
@@ -110,11 +119,6 @@ cleanup()
 main()
 {
   initialize();
-}
-]]></script>
-  <script name="Terminate" isEscaped="1"><![CDATA[main()
-{
-  cleanup();
 }
 ]]></script>
  </events>
