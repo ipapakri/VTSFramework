@@ -47,6 +47,10 @@ void addDatapoints()
     dyn_string views;
     dpGet(dp + &quot;.Internal.views&quot;, views);
     shared_ptr&lt;MapObject&gt; mapObject = mapNavigator.getMapObject(dpes[i]);
+
+    if (mapObject == nullptr)
+      continue;
+
     for(int j=1; j&lt;=dynlen(views); j++)
     {
       string prefix = &quot;min&quot;;

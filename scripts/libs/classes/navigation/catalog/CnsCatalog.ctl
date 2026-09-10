@@ -49,40 +49,50 @@ class CnsCatalog : NavigationCatalog
     return root;
   }
 
-  private void buildFromRoot(shared_ptr<CnsNode> root)
-  {
-    targets = makeMapping();
-    this.root = root;
-
-    if(root != nullptr)
-    {
-      indexNode(root);
-    }
-  }
-
+  /**
+    The CNS root node, for callers that need the CNS tree itself rather than
+    the navigation view of it.
+  */
   public shared_ptr<CnsNode> getRoot()
   {
     return root;
   }
 
-  public shared_ptr<NavigationTarget> resolve(string id)
+  public string getRootId()
   {
-    bool found = (id != "" && mappingHasKey(targets, id));
-    string targetId;
-    if (found)
+    return rootId;
+  }
+
+  public dyn_string getChildIds(string id)
+  {
+    if (mappingHasKey(childIds, id))
+      return childIds[id];
+
+    return makeDynString();
+  }
+
+  public dyn_string getAllIds()
+  {
+    dyn_string ids;
+    dyn_anytype keys = mappingKeys(targets);
+
+    for (int i = 1; i <= dynlen(keys); i++)
     {
-      shared_ptr<NavigationTarget> t = targets[id];
-      targetId = t.getId();
+      dynAppend(ids, (string)keys[i]);
     }
 
+    return ids;
+  }
+
+  public shared_ptr<NavigationTarget> resolve(string id)
+  {
     if (id == "" || !mappingHasKey(targets, id))
     {
       DebugTN(__FILE__, __FUNCTION__, __LINE__, "Target not in catalog: " + id);
       return nullptr;
     }
 
-    shared_ptr<NavigationTarget> target = targets[id];
-    return target;
+    return targets[id];
   }
 
 //--------------------------------------------------------------------------------
@@ -93,19 +103,46 @@ class CnsCatalog : NavigationCatalog
 //@private members
 //--------------------------------------------------------------------------------
 
-  private void indexNode(shared_ptr<CnsNode> node)
+  private void buildFromRoot(shared_ptr<CnsNode> root)
   {
-    if (node == nullptr)
+    targets = makeMapping();
+    childIds = makeMapping();
+    rootId = "";
+    this.root = root;
+
+    if (root == nullptr)
       return;
 
-    if (node.getCnsPath() != "")
-      targets[node.getCnsPath()] = toTarget(node);
+    rootId = root.getCnsPath();
+    indexNode(root, "");
+  }
 
+  private void indexNode(shared_ptr<CnsNode> node, string parentId)
+  {
+    if (node == nullptr || node.getCnsPath() == "")
+      return;
+
+    string id = node.getCnsPath();
+
+    shared_ptr<NavigationTarget> target = toTarget(node);
+    target.setParentId(parentId);
+    targets[id] = target;
+
+    dyn_string ids;
     dyn_anytype children = node.getChildren();
+
     for (int i = 1; i <= dynlen(children); i++)
     {
-      indexNode(children[i]);
+      shared_ptr<CnsNode> child = children[i];
+
+      if (child == nullptr || child.getCnsPath() == "")
+        continue;
+
+      dynAppend(ids, child.getCnsPath());
+      indexNode(child, id);
     }
+
+    childIds[id] = ids;
   }
 
   private shared_ptr<NavigationTarget> toTarget(shared_ptr<CnsNode> node)
@@ -126,5 +163,7 @@ class CnsCatalog : NavigationCatalog
   }
 
   private shared_ptr<CnsNode> root;
+  private string rootId;
   private mapping targets;
+  private mapping childIds;
 };

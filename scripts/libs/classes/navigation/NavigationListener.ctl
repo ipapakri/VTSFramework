@@ -16,10 +16,11 @@
 
 //--------------------------------------------------------------------------------
 /**
-  Resolves a navigation id to a target. CNS is one implementation; projects
-  without CNS can supply another catalog.
+  Observer of the current navigation target, for components that react to
+  navigation without displaying it: breadcrumbs, window titles, alarm filters.
+  Register with NavigationController::addListener().
 */
-class NavigationCatalog
+class NavigationListener
 {
 //--------------------------------------------------------------------------------
 //@public members
@@ -28,39 +29,32 @@ class NavigationCatalog
   //------------------------------------------------------------------------------
   /** The Default Constructor.
   */
-  public NavigationCatalog()
+  public NavigationListener()
   {
-  }
-
-  public shared_ptr<NavigationTarget> resolve(string id)
-  {
-    throw(makeError("", PRIO_SEVERE, ERR_IMPL, 1, "Method resolve is abstract in this context, \"NavigationCatalog\""));
-    return nullptr;
   }
 
   /**
-    Id navigate("") falls back to. A flat catalog has no root and returns "".
+    Called after a target has been committed and pushed to the views.
+    Default is a no-op.
   */
-  public string getRootId()
+  public void onNavigated(shared_ptr<NavigationTarget> target)
   {
-    return "";
   }
 
   /**
-    Ids directly below id, in display order. Override to expose a hierarchy to
-    tree-like views; a flat catalog returns nothing.
+    Process-wide unique handle, used by removeListener().
   */
-  public dyn_string getChildIds(string id)
+  public int getListenerId()
   {
-    return makeDynString();
-  }
+    // Assigned lazily rather than in the constructor so that subclasses keep
+    // an identity even if they never chain to this base constructor.
+    if (listenerId == 0)
+    {
+      nextListenerId++;
+      listenerId = nextListenerId;
+    }
 
-  /**
-    Every id the catalog knows, in no particular order.
-  */
-  public dyn_string getAllIds()
-  {
-    return makeDynString();
+    return listenerId;
   }
 
 //--------------------------------------------------------------------------------
@@ -70,4 +64,7 @@ class NavigationCatalog
 //--------------------------------------------------------------------------------
 //@private members
 //--------------------------------------------------------------------------------
+  private int listenerId;
+
+  private static int nextListenerId;
 };

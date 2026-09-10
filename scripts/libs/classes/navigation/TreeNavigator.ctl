@@ -8,7 +8,7 @@
 
 //--------------------------------------------------------------------------------
 // Libraries used (#uses)
-#uses "classes/CNS/CnsNode.ctl"
+#uses "classes/navigation/NavigationCatalog"
 #uses "classes/navigation/NavigationTarget"
 #uses "classes/navigation/NavigationView"
 
@@ -18,8 +18,16 @@
 
 //--------------------------------------------------------------------------------
 /**
-  Generic tree surface. Product-specific extras (PLC icons, area filtering, ...)
-  belong in a subclass that overrides onNodeAdded().
+  Generic tree surface over any NavigationCatalog hierarchy. Product-specific
+  extras (PLC icons, area filtering, ...) belong in a subclass that overrides
+  onNodeAdded().
+
+  The panel wiring is expected to pass this view as the navigation source:
+
+    selectionChanged(string id)
+    {
+      navigationController.navigate(id, treeView);
+    }
 */
 class TreeNavigator : NavigationView
 {
@@ -49,6 +57,8 @@ class TreeNavigator : NavigationView
 
   public void select(string id)
   {
+    // Cheap short-circuit only. setSelectedItem() re-emits selectionChanged,
+    // and it is the controller that refuses to re-enter on the way back.
     if (treeWidget.selectedItem() == id)
     {
       return;
@@ -82,11 +92,24 @@ class TreeNavigator : NavigationView
     treeWidget.clear();
   }
 
-  public void populate(shared_ptr<CnsNode> node, string parentId = "")
+  /**
+    Builds the tree from the catalog hierarchy, starting at rootId or at the
+    catalog root when rootId is "".
+  */
+  public void populate(shared_ptr<NavigationCatalog> catalog, string rootId = "")
   {
+    if (catalog == nullptr)
+    {
+      DebugTN(__FILE__, __FUNCTION__, __LINE__, "Cannot populate tree without a catalog");
+      return;
+    }
+
+    if (rootId == "")
+      rootId = catalog.getRootId();
+
     treeWidget.showHeader(false);
     treeWidget.setSorting(0, TRUE);
-    addNode(node, parentId);
+    addNode(catalog, rootId, "");
     treeWidget.expandAll();
     treeWidget.adjustColumn(0);
   }
@@ -99,7 +122,7 @@ class TreeNavigator : NavigationView
     Called after each tree item is created. Default is a no-op.
     Subclasses attach comms icons, hide unauthorized nodes, etc. here.
   */
-  protected void onNodeAdded(shared_ptr<CnsNode> node)
+  protected void onNodeAdded(shared_ptr<NavigationTarget> target)
   {
   }
 
@@ -107,24 +130,30 @@ class TreeNavigator : NavigationView
 //@private members
 //--------------------------------------------------------------------------------
 
-  private void addNode(shared_ptr<CnsNode> node, string parentId = "")
+  private void addNode(shared_ptr<NavigationCatalog> catalog, string id, string parentId)
   {
-    if (node == nullptr)
+    if (id == "")
+      return;
+
+    shared_ptr<NavigationTarget> target = catalog.resolve(id);
+
+    if (target == nullptr)
       return;
 
     treeWidget.appendItemNC(
       parentId,
-      node.getCnsPath(),
-      node.getLabel()
+      id,
+      target.getLabel()
     );
-    onNodeAdded(node);
+    onNodeAdded(target);
 
-    dyn_anytype nodeChildren = node.getChildren();
-    for (int i = 1; i <= dynlen(nodeChildren); i++)
+    dyn_string childIds = catalog.getChildIds(id);
+    for (int i = 1; i <= dynlen(childIds); i++)
     {
       addNode(
-        nodeChildren[i],
-        node.getCnsPath()
+        catalog,
+        childIds[i],
+        id
       );
     }
   }

@@ -45,6 +45,20 @@ class NavigationTarget
     return this.id;
   }
 
+  public void setParentId(string parentId)
+  {
+    this.parentId = parentId;
+  }
+
+  /**
+    Id of the enclosing target, "" for a root. Lets callers walk upwards
+    (breadcrumbs) without asking the catalog for the whole hierarchy.
+  */
+  public string getParentId()
+  {
+    return this.parentId;
+  }
+
   public void setLabel(string label)
   {
     this.label = label;
@@ -143,6 +157,7 @@ class NavigationTarget
 //@private members
 //--------------------------------------------------------------------------------
   private string id;
+  private string parentId;
   private string label;
   private string datapoint;
 

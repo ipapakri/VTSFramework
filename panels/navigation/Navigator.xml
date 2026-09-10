@@ -34,30 +34,39 @@ string rootLabel;
 shared_ptr&lt;AreaManager&gt; areaManager;
 string connectedUser;
 
+string navigatorKey;
 shared_ptr&lt;NavigationController&gt; navigationController = nullptr;
+shared_ptr&lt;EYDAPTreeNavigator&gt; treeView = nullptr;
 
 initialize()
 {
   EMBEDDED_MODULE1.ModuleName(MAP_MODULE_NAME);
   EMBEDDED_MODULE2.ModuleName(MAIN_MODULE_NAME);
 
-  shared_ptr&lt;CnsCatalog&gt; catalog = new CnsCatalog();
-  shared_ptr&lt;CnsNode&gt; root = catalog.loadView(VIEW_NAME);
+  navigatorKey = myModuleName() + &quot;_&quot; + MAP_MODULE_NAME;
 
-  navigationController = NavigationController::instance(myModuleName() + &quot;_&quot; + MAP_MODULE_NAME);
+  shared_ptr&lt;CnsCatalog&gt; catalog = new CnsCatalog();
+
+  if (catalog.loadView(VIEW_NAME) == nullptr)
+  {
+    DebugTN(__FUNCTION__, __LINE__, &quot;Could not load CNS view:&quot;, VIEW_NAME);
+    return;
+  }
+
+  navigationController = NavigationController::instance(navigatorKey);
   navigationController.setNavigationCatalog(catalog);
   // navigationController.setGuard(yourAreaGuard);  // optional
 
-  shared_ptr&lt;EYDAPTreeNavigator&gt; treeView = new EYDAPTreeNavigator(
+  treeView = new EYDAPTreeNavigator(
     getShape(myModuleName(), myPanelName(), &quot;TREE1&quot;));
-  treeView.populate(root);
+  treeView.populate(catalog);
   navigationController.addView(treeView);
 
   // Omit this block for panel-only projects
-  shared_ptr&lt;MapNavigator&gt; mapView = MapNavigator::instance(myModuleName() + &quot;_&quot; + MAP_MODULE_NAME);
+  shared_ptr&lt;MapNavigator&gt; mapView = MapNavigator::instance(navigatorKey);
   mapView.setMapModule(getShape(myModuleName(), myPanelName(), &quot;EMBEDDED_MODULE1&quot;));
-  mapView.populate(root);
-  RootPanelOnModule(&quot;examples/maps/subPanels/map.xml&quot;, &quot;&quot;, MAP_MODULE_NAME, makeDynString(&quot;$NavigatorName:&quot; + myModuleName() + &quot;_&quot; + MAP_MODULE_NAME));
+  mapView.populate(catalog);
+  RootPanelOnModule(&quot;examples/maps/subPanels/map.xml&quot;, &quot;&quot;, MAP_MODULE_NAME, makeDynString(&quot;$NavigatorName:&quot; + navigatorKey));
 
   // Omit this block for map-only projects
   shared_ptr&lt;PanelNavigator&gt; panelView = new PanelNavigator(
@@ -68,7 +77,14 @@ initialize()
   //navigationController.addView(mapView);
   //navigationController.addView(panelView);
 
-  navigationController.navigate(root.getCnsPath());
+  // An empty id resolves to the catalog root.
+  navigationController.navigate(&quot;&quot;);
+}
+
+cleanup()
+{
+  NavigationController::release(navigatorKey);
+  MapNavigator::release(navigatorKey);
 }]]></script>
   <script name="Initialize" isEscaped="1"><![CDATA[/**
  * Populate a WinCC OA Tree widget from a CNS view.
@@ -85,6 +101,11 @@ initialize()
 main()
 {
   initialize();
+}
+]]></script>
+  <script name="Terminate" isEscaped="1"><![CDATA[main()
+{
+  cleanup();
 }
 ]]></script>
  </events>
@@ -172,7 +193,12 @@ main()
     <extended>
      <script name="selectionChanged" isEscaped="1"><![CDATA[selectionChanged(string id)
 {
-  navigationController.navigate(id);
+  if (navigationController == nullptr)
+    return;
+
+  // Passing treeView marks this tree as the origin, so the controller does
+  // not push the selection back into it.
+  navigationController.navigate(id, treeView);
 }]]></script>
     </extended>
    </properties>

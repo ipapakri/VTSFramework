@@ -9,7 +9,7 @@
 //--------------------------------------------------------------------------------
 // Libraries used (#uses)
 #uses "classes/Map/MapObject"
-#uses "classes/CNS/CnsNode"
+#uses "classes/navigation/NavigationCatalog"
 #uses "classes/navigation/NavigationTarget"
 #uses "classes/navigation/NavigationView"
 
@@ -43,6 +43,19 @@ class MapNavigator : NavigationView
   }
 
   /**
+    @brief Drops the navigator registered for moduleName.
+    @details Call from the owning panel's Terminate: the navigator holds shape
+    handles that die with the panel.
+  */
+  public static void release(string moduleName)
+  {
+    if (mappingHasKey(instances, moduleName))
+    {
+      mappingRemove(instances, moduleName);
+    }
+  }
+
+  /**
     @brief The function sets the shape of the Map EWO.
     @param shapeMap The given shape of the Map EWO.
   */
@@ -61,17 +74,16 @@ class MapNavigator : NavigationView
   }
 
   /**
-    @brief The function returns the coordinates for the given object name.
+    @brief The function returns the map object registered for the given name.
     @param name The object name.
-    @return string coordinate coordinate as a string or an empty string
-    if the object is not found.
+    @return The map object, or nullptr if the object is not found.
   */
   public shared_ptr<MapObject> getMapObject(string name)
   {
     if ( mappingHasKey(mapObjects, name) )
       return mapObjects[name];
 
-    return "";
+    return nullptr;
   }
 
     public shape getMapModule()
@@ -93,10 +105,14 @@ class MapNavigator : NavigationView
   */
   public void goThere(const string coordinates = "")
   {
-    while(!this.getReady())
-    {delay(0, 500);}
+    if ( !waitForReady() )
+    {
+      DebugTN(__FILE__, __FUNCTION__, __LINE__, "Map is not ready, cannot center on", coordinates);
+      return;
+    }
+
     shape mapShape = mapWidget;
-    DebugTN(__FUNCTION__, __LINE__, mapShape, getHomeCoordinates());
+
     if ( !mapShape )
       return;
 
@@ -237,25 +253,35 @@ class MapNavigator : NavigationView
     return homeZoom;
   }
 
-  public void populate(shared_ptr<CnsNode> node)
+  /**
+    @brief Registers a map symbol for every catalog target that has a location.
+  */
+  public void populate(shared_ptr<NavigationCatalog> catalog)
   {
-    if (node.getHasLocation())
+    if (catalog == nullptr)
     {
-      setMapObject(
-        node.getDp(),
-        new MapObject(
-          node.getLat(),
-          node.getLon(),
-          node.getDp(),
-          node.getCnsPath()
-        )
-      );
+      DebugTN(__FILE__, __FUNCTION__, __LINE__, "Cannot populate map without a catalog");
+      return;
     }
 
-    dyn_anytype children = node.getChildren();
-    for (int i = 1; i <= dynlen(children); i++)
+    dyn_string ids = catalog.getAllIds();
+
+    for (int i = 1; i <= dynlen(ids); i++)
     {
-      populate(children[i]);
+      shared_ptr<NavigationTarget> target = catalog.resolve(ids[i]);
+
+      if (target == nullptr || !target.getHasLocation())
+        continue;
+
+      setMapObject(
+        target.getDatapoint(),
+        new MapObject(
+          target.getLatitude(),
+          target.getLongitude(),
+          target.getDatapoint(),
+          target.getId()
+        )
+      );
     }
   }
 
@@ -267,8 +293,13 @@ class MapNavigator : NavigationView
     if (!target.getHasLocation())
       return true;
 
-    while(!this.getReady())
-    {}
+    // The EWO only exists once the map sub-panel has run. Hold the target and
+    // let onReady() replay it rather than blocking the UI thread here.
+    if (!this.getReady())
+    {
+      assignPtr(pendingTarget, target);
+      return true;
+    }
 
     return zoomToPoint(target.getLatitude(), target.getLongitude(), target.getAltitude());
   }
@@ -288,9 +319,42 @@ class MapNavigator : NavigationView
 //@protected members
 //--------------------------------------------------------------------------------
 
+  /**
+    @brief Replays the target that arrived while the map was still loading.
+  */
+  protected void onReady()
+  {
+    if ( pendingTarget == nullptr )
+      return;
+
+    shared_ptr<NavigationTarget> target;
+    assignPtr(target, pendingTarget);
+    pendingTarget = nullptr;
+
+    apply(target);
+  }
+
 //--------------------------------------------------------------------------------
 //@private members
 //--------------------------------------------------------------------------------
+
+  /**
+    @brief Waits for the map sub-panel to report itself ready.
+    @param timeoutMs Maximum time to wait, in milliseconds.
+    @return bool ready True if the map became ready within the timeout.
+  */
+  private bool waitForReady(int timeoutMs = 10000)
+  {
+    int waited = 0;
+
+    while ( !this.getReady() && waited < timeoutMs )
+    {
+      delay(0, 100);
+      waited += 100;
+    }
+
+    return this.getReady();
+  }
 
   /**
     @brief A helper function to return the ID of an XML element with a specified name hierarchy.
@@ -377,6 +441,8 @@ class MapNavigator : NavigationView
 
   private shape mapWidget;
   private shape mapModule;
+
+  private shared_ptr<NavigationTarget> pendingTarget;
 
   private mapping mapObjects;
   private dyn_string allDPEnames;
