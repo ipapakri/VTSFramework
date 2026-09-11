@@ -204,7 +204,7 @@ class CnsRepository
       name = substr(name, 0, strlen(name) - 1);
     }
 
-    int dotPos = strrpos(name, ".");
+    int dotPos = lastIndexOf(name, ".");
 
     if (dotPos >= 0)
       return substr(name, dotPos + 1);
@@ -229,11 +229,29 @@ class CnsRepository
       return cnsPath;
 
     string nodePart = substr(cnsPath, colonPos + 1);
-    int dotPos = strrpos(nodePart, ".");
+    int dotPos = lastIndexOf(nodePart, ".");
 
     if (dotPos >= 0)
       return substr(nodePart, dotPos + 1);
 
     return nodePart;
+  }
+
+  /**
+    CTRL has no strrpos. Walk backwards with substr() for the last match.
+  */
+  private int lastIndexOf(string text, string needle)
+  {
+    int needleLen = strlen(needle);
+    if (needleLen < 1)
+      return -1;
+
+    for (int i = strlen(text) - needleLen; i >= 0; i--)
+    {
+      if (substr(text, i, needleLen) == needle)
+        return i;
+    }
+
+    return -1;
   }
 };

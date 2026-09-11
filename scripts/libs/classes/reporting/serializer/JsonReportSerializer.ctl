@@ -63,9 +63,7 @@ class JsonReportSerializer : ReportSerializer
 
   private bool ensureParentDir(string fileName)
   {
-    int slash = strrpos(fileName, "/");
-    if (slash < 0)
-      slash = strrpos(fileName, "\\");
+    int slash = lastPathSeparator(fileName);
 
     if (slash < 0)
       return true;
@@ -79,9 +77,7 @@ class JsonReportSerializer : ReportSerializer
     if (dir == "" || isdir(dir))
       return true;
 
-    int slash = strrpos(dir, "/");
-    if (slash < 0)
-      slash = strrpos(dir, "\\");
+    int slash = lastPathSeparator(dir);
 
     if (slash > 0)
     {
@@ -92,5 +88,23 @@ class JsonReportSerializer : ReportSerializer
 
     mkdir(dir);
     return isdir(dir);
+  }
+
+  /**
+    CTRL has no strrpos. Walk backwards with substr() to find the last
+    directory separator.
+  */
+  private int lastPathSeparator(string path)
+  {
+    int last = -1;
+
+    for (int i = strlen(path) - 1; i >= 0; i--)
+    {
+      string character = substr(path, i, 1);
+      if (character == "/" || character == "\\")
+        return i;
+    }
+
+    return last;
   }
 };
