@@ -19,8 +19,10 @@
 //--------------------------------------------------------------------------------
 /**
   Generic tree surface over any NavigationCatalog hierarchy. Product-specific
-  extras (PLC icons, area filtering, ...) belong in a subclass that overrides
-  onNodeAdded().
+  extras belong in a subclass: decoration per item goes in onNodeAdded(), and
+  anything that depends on the finished tree (hiding nodes a user may not see,
+  and so collapsing the branches left empty) walks it afterwards through
+  children() and setVisible(), starting from the protected rootId.
 
   The panel wiring is expected to pass this view as the navigation source:
 
@@ -107,8 +109,8 @@ class TreeNavigator : NavigationView
     if (rootId == "")
       rootId = catalog.getRootId();
 
-    this.catalog = catalog;   // new
-    this.rootId  = rootId;    // new
+    this.catalog = catalog;
+    this.rootId = rootId;
 
     treeWidget.showHeader(false);
     treeWidget.setSorting(0, TRUE);

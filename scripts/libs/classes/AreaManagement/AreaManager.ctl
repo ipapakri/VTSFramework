@@ -115,6 +115,12 @@ class AreaManager
     {
       return true;
     }
+    else if (!mappingHasKey(this.users, userName))
+    {
+      // No UserPermissions datapoint for this login: grants nothing rather
+      // than dereferencing a null user.
+      return false;
+    }
     return this.users[userName].hasPermission(areaDp, permission);
   }
 

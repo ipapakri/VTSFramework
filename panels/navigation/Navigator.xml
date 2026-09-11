@@ -68,7 +68,6 @@ initialize()
   navigationController.setNavigationCatalog(catalog);
   shared_ptr&lt;EYDAPAreaGuard&gt; guard = new EYDAPAreaGuard(areaManager, connectedUser);
   navigationController.setGuard(guard);
-  // navigationController.setGuard(yourAreaGuard);  // optional
 
   treeView = new EYDAPTreeNavigator(
     getShape(myModuleName(), myPanelName(), &quot;TREE1&quot;));
@@ -95,6 +94,9 @@ initialize()
 
 cleanup()
 {
+  if (treeView != nullptr)
+    treeView.dispose();
+
   NavigationController::release(navigatorScope);
   MapNavigator::release(navigatorScope);
   NavigationScope::release(navigatorScope);
