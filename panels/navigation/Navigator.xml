@@ -63,6 +63,8 @@ initialize()
     return;
   }
 
+  areaManager.setNavigationCatalog(catalog);
+
   dpGet(myUiDpName()+&quot;.UserName&quot;, connectedUser);
   navigationController = NavigationController::instance(navigatorScope);
   navigationController.setNavigationCatalog(catalog);

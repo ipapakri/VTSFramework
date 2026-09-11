@@ -8,10 +8,10 @@
 
 //--------------------------------------------------------------------------------
 // Libraries used (#uses)
-#uses "ptnavi"
-#uses "ptms"
 #uses "classes/AreaManagement/Area"
 #uses "classes/AreaManagement/UserClass"
+#uses "classes/navigation/NavigationCatalog"
+#uses "classes/navigation/NavigationTarget"
 
 //--------------------------------------------------------------------------------
 // Variables and Constants
@@ -34,8 +34,6 @@ class AreaManager
   {
     initialize();
     connect();
-    systemName = getSystemName();
-    strreplace(systemName, ":", "");
   }
 
   public static bool isAdminUser(string userName)
@@ -129,6 +127,15 @@ class AreaManager
     return users[userName].getAreas();
   }
 
+  /**
+    The hierarchy the per-user sum alerts are built from. Without it
+    updateUserAccessRights() only writes the permissions.
+  */
+  public void setNavigationCatalog(shared_ptr<NavigationCatalog> navigationCatalog)
+  {
+    this.navigationCatalog = navigationCatalog;
+  }
+
   public void updateUserAccessRights(string userName, const mapping& userAccessLevels)
   {
     dyn_string userAreas = mappingKeys(userAccessLevels);
@@ -144,42 +151,56 @@ class AreaManager
     generateUserSumAlerts(userName);
   }
 
+  /**
+    Rebuilds the sum alert tree for one user: one sum alert datapoint per
+    catalog branch that still has a leaf the user may read below it.
+  */
   private void generateUserSumAlerts(string userName)
   {
-    processNode(1, userName);
+    if (navigationCatalog == nullptr)
+    {
+      DebugTN(__FILE__, __FUNCTION__, __LINE__,
+              "No navigation catalog set, cannot generate sum alerts for", userName);
+      return;
+    }
+
+    processNode(navigationCatalog.getRootId(), userName);
   }
 
-  private string processNode(int i, string userName)
+  /**
+    The datapoint the parent has to sum up: the leaf itself when the user may
+    read it, the branch's own sum alert datapoint when anything below it
+    survived, and "" when nothing did.
+  */
+  private string processNode(string id, string userName)
   {
-    // Leaf
-    dyn_string children = ptnavi_navigation[ systemName ][ ptnavi_CHILDREN ][i];
-    string dp = "";
-    if (dynlen(children) == 0)
-    {
-      string parameterString = ptnavi_navigation[ systemName ][ ptnavi_PARAMETERS ][i];
-      if (parameterString == "")
-      {
-        return "";
-      }
-      dyn_string parameters = strsplit(parameterString, "$");
-      dp = parameters[2];
-      strreplace(dp, "DP:", "");
+    shared_ptr<NavigationTarget> target = navigationCatalog.resolve(id);
 
-      if(areaManager.userHasPermission(userName, dp, 0))
-      {
-        return dp + ".";
-      }
-      else
+    if (target == nullptr)
+    {
+      return "";
+    }
+
+    dyn_string childIds = navigationCatalog.getChildIds(id);
+
+    if (dynlen(childIds) == 0)
+    {
+      string dp = target.getDatapoint();
+
+      if (dp == "" || !userHasPermission(userName, dp, READ_ACCESS_BIT))
       {
         return "";
       }
+
+      return dp;
     }
 
     dyn_string childrenAlarms;
 
-    for (int j = 1; j <=dynlen(children); j++)
+    for (int i = 1; i <= dynlen(childIds); i++)
     {
-      string childAlarm = processNode(children[j], userName);
+      string childAlarm = processNode(childIds[i], userName);
+
       if (childAlarm != "")
       {
         dynAppend(childrenAlarms, childAlarm);
@@ -191,43 +212,95 @@ class AreaManager
       return "";
     }
 
-    int iError;
-    string dpName = ptnavi_navigation[ systemName ][ ptnavi_SUMALERTPANEL ][i] + "_" + userName;
-    if(!dpExists(dpName))
+    string dpName = sumAlertDpName(id, userName);
+
+    createSumAlertDp(dpName);
+    configureSumAlert(dpName, target, childrenAlarms);
+
+    return dpName;
+  }
+
+  /**
+    A catalog id carries the view name and the path separators, none of which a
+    datapoint name may contain, so every character outside [A-Za-z0-9_]
+    collapses to an underscore.
+  */
+  private string sumAlertDpName(string id, string userName)
+  {
+    return SUM_ALERT_DP_PREFIX + toDpNameToken(id) + "_" + toDpNameToken(userName);
+  }
+
+  private string toDpNameToken(string text)
+  {
+    string token;
+
+    for (int i = 0; i < strlen(text); i++)
     {
-      dpCopy("_mp__SumAlertPanel", dpName, iError);
+      string character = substr(text, i, 1);
+
+      if ((character >= "a" && character <= "z") ||
+          (character >= "A" && character <= "Z") ||
+          (character >= "0" && character <= "9"))
+      {
+        token += character;
+      }
+      else
+      {
+        token += "_";
+      }
+    }
+
+    return token;
+  }
+
+  private void createSumAlertDp(string dpName)
+  {
+    int error;
+
+    if (!dpExists(dpName))
+    {
+      dpCopy(SUM_ALERT_MASTER_DP, dpName, error);
     }
     else
     {
-      int iMp;
-      dyn_string dsMpDpe = dpNames("_mp__SumAlertPanel.*");
+      dyn_string masterDpes = dpNames(SUM_ALERT_MASTER_DP + ".*");
 
-      for ( iMp = 1; iMp <= dynlen(dsMpDpe); iMp++)
+      for (int i = 1; i <= dynlen(masterDpes); i++)
       {
-        string s = dsMpDpe[iMp];
-        int iAlertType;
-        strreplace(s, dpSubStr(dsMpDpe[iMp],DPSUB_DP), dpName);
-        dpGet(s + ":_alert_hdl.._type", iAlertType);  // check if there is already a sumalert
-        if ( iAlertType != DPCONFIG_SUM_ALERT)
+        string dpe = masterDpes[i];
+        strreplace(dpe, dpSubStr(masterDpes[i], DPSUB_DP), dpName);
+
+        int alertType;
+        dpGet(dpe + ":_alert_hdl.._type", alertType);
+
+        // Only the elements the master gained since this copy was made.
+        if (alertType != DPCONFIG_SUM_ALERT)
         {
-          //DebugTN(__FUNCTION__, __LINE__, dpSubStr(dsMpDpe[iMp],DPSUB_DP_EL), dpName,makeDynString("_alert_hdl"), iError);
-          dpCopyConfig(dpSubStr(dsMpDpe[iMp],DPSUB_DP_EL), dpName,makeDynString("_alert_hdl"), iError);
+          dpCopyConfig(dpSubStr(masterDpes[i], DPSUB_DP_EL), dpName, makeDynString("_alert_hdl"), error);
         }
       }
     }
 
-    if (iError)
+    if (error)
     {
-      throwError(makeError("", PRIO_INFO, ERR_SYSTEM, 0, "pt_generateSumAlerts:::dpCopy:::iError "+iError+" ( _mp__SumAlertPanel -> "+dpName+" )"));
+      throwError(makeError("", PRIO_INFO, ERR_SYSTEM, 0,
+                           "generateUserSumAlerts:::dpCopy:::error " + error +
+                           " ( " + SUM_ALERT_MASTER_DP + " -> " + dpName + " )"));
     }
+  }
 
+  private void configureSumAlert(string dpName,
+                                 shared_ptr<NavigationTarget> target,
+                                 const dyn_string& childrenAlarms)
+  {
     dyn_int        prioMin, prioMax;
     dyn_string     prioRange;
-    dyn_string     defaultDps=makeDynString(getSystemName()+"_TmpBitAlert.");
-    dyn_string     parameters = ptnavi_navigation[ systemName ][ ptnavi_PARAMETERS ][i];
-    string         panel = ptnavi_navigation[ systemName ][ ptnavi_FILENAME ][i];
-    dyn_langString dlOn,dlOff;
-    unsigned       uAckHasPrio,uOrder;
+    dyn_string     defaultDps = makeDynString(getSystemName() + "_TmpBitAlert.");
+    dyn_string     parameters = alertPanelParameters(target);
+    string         panel = target.getPanelFile();
+    dyn_langString dlOn, dlOff;
+    unsigned       uAckHasPrio, uOrder;
+    langString     help;
     int            aType;
 
     dpGet("_SumAlertGeneral.prioRange.name:_online.._value",    prioRange,
@@ -238,64 +311,105 @@ class AreaManager
           "_SumAlertGeneral.ack_has_prio:_online.._value",      uAckHasPrio,
           "_SumAlertGeneral.order:_online.._value",             uOrder);
 
-    for (int j=1;j<=dynlen(prioRange);j++)
+    for (int j = 1; j <= dynlen(prioRange); j++)
     {
-      dyn_string prioRangeChildrenAlarms = childrenAlarms;
-      for(int k=1; k<=dynlen(prioRangeChildrenAlarms); k++)
+      dyn_string prioRangeChildrenAlarms = alertSources(childrenAlarms, prioRange[j]);
+      string dpe = dpName + "." + prioRange[j];
+      dpGet(dpe + ":_alert_hdl.._type", aType);
+
+      if (aType != DPCONFIG_SUM_ALERT)
       {
-        anytype val;
-        if(dpExists(prioRangeChildrenAlarms[k] + ":_alert_hdl.._type"))
-        {
-          dpGet(prioRangeChildrenAlarms[k] + ":_alert_hdl.._type", val);
-        }
-        else if(dpExists(prioRangeChildrenAlarms[k] + ".:_alert_hdl.._type"))
-        {
-          dpGet(prioRangeChildrenAlarms[k] + ".:_alert_hdl.._type", val);
-        }
-        if(val == DPCONFIG_NONE)
-        {
-          prioRangeChildrenAlarms[k] = prioRangeChildrenAlarms[k] + "." + prioRange[j];
-        }
-      }
-      string dpe=dpName+"."+prioRange[j];
-      dpGet(dpe+":_alert_hdl.._type",aType);
-
-      if ( aType != DPCONFIG_SUM_ALERT )
-      {
-        dpSetTimed(0L,dpe+":_alert_hdl.._type",DPCONFIG_SUM_ALERT); // IM 106203
-        dpSetTimed(0L,dpe+":_alert_hdl.._text1",dlOn[j],
-                dpe+":_alert_hdl.._text0",dlOff[j],
-                dpe+":_alert_hdl.._class","",
-                dpe+":_alert_hdl.._ack_has_prio",uAckHasPrio,
-                    dpe+":_alert_hdl.._order",2,//uOrder,
-                    dpe+":_alert_hdl.._dp_list",makeDynString("_TmpBitAlert."),
-                    dpe+":_alert_hdl.._dp_pattern","",
-                    dpe+":_alert_hdl.._prio_pattern",prioMin[j]+"-"+prioMax[j],
-                    dpe+":_alert_hdl.._abbr_pattern","",
-                    dpe+":_alert_hdl.._ack_deletes",true,
-                    dpe+":_alert_hdl.._non_ack",true,
-                    dpe+":_alert_hdl.._came_ack",true,
-                    dpe+":_alert_hdl.._pair_ack",true,
-                    dpe+":_alert_hdl.._both_ack",true,
-                    dpe+":_alert_hdl.._panel","",
-                    dpe+":_alert_hdl.._panel_param",makeDynString(),
-                    dpe+":_alert_hdl.._help",ls_lt);
-        }
-
-        bool ok;
-        dpDeactivateAlert( dpe, ok, true);
-
-        dpSetTimed(0L,dpe+":_alert_hdl.._dp_list",(dynlen(prioRangeChildrenAlarms)>0)?prioRangeChildrenAlarms:defaultDps, // IM 106203
-                    dpe+":_alert_hdl.._panel",panel,
-                    dpe+":_alert_hdl.._panel_param",strsplit(parameters,"$"),
-                    dpe+":_alert_hdl.._prio_pattern",prioMin[j]+"-"+prioMax[j],
-                    dpe+":_alert_hdl.._ack_has_prio",uAckHasPrio,
-                    dpe+":_alert_hdl.._order",uOrder);
-
-        dpActivateAlert( dpe, ok, true);
+        dpSetTimed(0L, dpe+":_alert_hdl.._type", DPCONFIG_SUM_ALERT); // IM 106203
+        dpSetTimed(0L, dpe+":_alert_hdl.._text1",        dlOn[j],
+                       dpe+":_alert_hdl.._text0",        dlOff[j],
+                       dpe+":_alert_hdl.._class",        "",
+                       dpe+":_alert_hdl.._ack_has_prio", uAckHasPrio,
+                       dpe+":_alert_hdl.._order",        2,
+                       dpe+":_alert_hdl.._dp_list",      makeDynString("_TmpBitAlert."),
+                       dpe+":_alert_hdl.._dp_pattern",   "",
+                       dpe+":_alert_hdl.._prio_pattern", prioMin[j]+"-"+prioMax[j],
+                       dpe+":_alert_hdl.._abbr_pattern", "",
+                       dpe+":_alert_hdl.._ack_deletes",  true,
+                       dpe+":_alert_hdl.._non_ack",      true,
+                       dpe+":_alert_hdl.._came_ack",     true,
+                       dpe+":_alert_hdl.._pair_ack",     true,
+                       dpe+":_alert_hdl.._both_ack",     true,
+                       dpe+":_alert_hdl.._panel",        "",
+                       dpe+":_alert_hdl.._panel_param",  makeDynString(),
+                       dpe+":_alert_hdl.._help",         help);
       }
 
-    return ptnavi_navigation[ systemName ][ ptnavi_SUMALERTPANEL ][i] + "_" + userName;
+      bool ok;
+      dpDeactivateAlert(dpe, ok, true);
+
+      dpSetTimed(0L, dpe+":_alert_hdl.._dp_list",      (dynlen(prioRangeChildrenAlarms) > 0) ? prioRangeChildrenAlarms : defaultDps, // IM 106203
+                     dpe+":_alert_hdl.._panel",        panel,
+                     dpe+":_alert_hdl.._panel_param",  parameters,
+                     dpe+":_alert_hdl.._prio_pattern", prioMin[j]+"-"+prioMax[j],
+                     dpe+":_alert_hdl.._ack_has_prio", uAckHasPrio,
+                     dpe+":_alert_hdl.._order",        uOrder);
+
+      dpActivateAlert(dpe, ok, true);
+    }
+  }
+
+  /**
+    A child contributes its own datapoint alert when it has one configured,
+    otherwise the element carrying the matching priority range.
+  */
+  private dyn_string alertSources(const dyn_string& childrenAlarms, string prioRangeName)
+  {
+    dyn_string sources;
+
+    for (int i = 1; i <= dynlen(childrenAlarms); i++)
+    {
+      int alertType = DPCONFIG_NONE;
+
+      if (dpExists(childrenAlarms[i] + ".:_alert_hdl.._type"))
+      {
+        dpGet(childrenAlarms[i] + ".:_alert_hdl.._type", alertType);
+      }
+
+      if (alertType == DPCONFIG_NONE)
+      {
+        dynAppend(sources, childrenAlarms[i] + "." + prioRangeName);
+      }
+      else
+      {
+        dynAppend(sources, childrenAlarms[i] + ".");
+      }
+    }
+
+    return sources;
+  }
+
+  /**
+    _panel_param holds the parameters without the leading '$' the catalog
+    stores them with.
+  */
+  private dyn_string alertPanelParameters(shared_ptr<NavigationTarget> target)
+  {
+    dyn_string parameters = target.getPanelParameters();
+    dyn_string alertParameters;
+
+    for (int i = 1; i <= dynlen(parameters); i++)
+    {
+      string parameter = parameters[i];
+
+      if (parameter == "")
+      {
+        continue;
+      }
+
+      if (substr(parameter, 0, 1) == "$")
+      {
+        parameter = substr(parameter, 1);
+      }
+
+      dynAppend(alertParameters, parameter);
+    }
+
+    return alertParameters;
   }
 
 //--------------------------------------------------------------------------------
@@ -308,9 +422,11 @@ class AreaManager
   private static shared_ptr<AreaManager> areaManager = nullptr;
   private mapping areas;
   private mapping users;
+  private shared_ptr<NavigationCatalog> navigationCatalog = nullptr;
   private dyn_string areaTypes = makeDynString("Lymata", "Lymata_S7Plus");
   private string userTypes = "UserPermissions";
   private const string USER_AREAS_ELEMENT = "Areas";
   private const string USER_PERMISSIONS_ELEMENT = "Permissions";
-  private string systemName;
+  private const string SUM_ALERT_MASTER_DP = "_mp__SumAlertPanel";
+  private const string SUM_ALERT_DP_PREFIX = "SumAlert_";
 };
